@@ -1,6 +1,5 @@
 # Imports
 import matplotlib.pyplot as plt
-from matplotlib import gridspec
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
@@ -33,12 +32,6 @@ experiment_dir.mkdir(exist_ok=True)
 
 latent_space_dir = experiment_dir / 'latent_space'
 latent_space_dir.mkdir(exist_ok=True)
-
-reconstruction_dir = experiment_dir / 'reconstruction'
-reconstruction_dir.mkdir(exist_ok=True)
-
-sampling_dir = experiment_dir / 'sampling'
-sampling_dir.mkdir(exist_ok=True)
 
 # load MNIST dataset
 # TODO: Datensatz MNIST aufbereiten fuer semi-supervised und in Datahandler Klasse auslagern
@@ -261,59 +254,3 @@ for epoch in range(n_epochs):
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
-
-        # Reconstruction
-        n_digits = 20  # how many digits we will display
-        x_test_decoded = decoder(encoder(x_test[:n_digits], training=False), training=False)
-        x_test_decoded = np.reshape(x_test_decoded, [-1, 28, 28]) * 255
-        fig = plt.figure(figsize=(20, 4))
-        for i in range(n_digits):
-            # display original
-            ax = plt.subplot(2, n_digits, i + 1)
-            plt.imshow(x_test[i].reshape(28, 28))
-            plt.gray()
-            ax.get_xaxis().set_visible(False)
-            ax.get_yaxis().set_visible(False)
-
-            # display reconstruction
-            ax = plt.subplot(2, n_digits, i + 1 + n_digits)
-            plt.imshow(x_test_decoded[i])
-            plt.gray()
-            ax.get_xaxis().set_visible(False)
-            ax.get_yaxis().set_visible(False)
-
-        plt.savefig(reconstruction_dir / ('epoch_%d.png' % epoch))
-        plt.close('all')
-
-        # Sampling
-        x_points = np.linspace(-3, 3, 20).astype(np.float32)
-        y_points = np.linspace(-3, 3, 20).astype(np.float32)
-
-        nx, ny = len(x_points), len(y_points)
-        plt.subplot()
-        gs = gridspec.GridSpec(nx, ny, hspace=0.05, wspace=0.05)
-
-        for i, g in enumerate(gs):
-            z = np.concatenate(([x_points[int(i / ny)]], [y_points[int(i % nx)]]))
-            z = np.reshape(z, (1, 2))
-            x = decoder(z, training=False).numpy()
-            ax = plt.subplot(g)
-            img = np.array(x.tolist()).reshape(28, 28)
-            ax.imshow(img, cmap='gray')
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_aspect('auto')
-        plt.savefig(sampling_dir / ('epoch_%d.png' % epoch))
-        plt.close('all')
-
-
-
-
-
-
-
-
-
-
-
-
