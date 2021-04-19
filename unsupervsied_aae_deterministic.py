@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
-import models
+from lib import models
 
 import time
 from pathlib import Path
@@ -19,9 +19,9 @@ except IndexError:
 ROOT_PATH = Path.cwd()
 
 # Setting the seed
-random_ssed = 1993
-tf.random.set_seed(random_ssed)
-np.random.seed(random_ssed)
+random_seed = 1993
+tf.random.set_seed(random_seed)
+np.random.seed(random_seed)
 
 # Ordner Path for images and results
 output_dir = ROOT_PATH / 'output'
@@ -45,6 +45,7 @@ x_test = x_test.astype('float32') / 255.
 x_train = x_train.reshape((-1, 28 * 28))
 x_test = x_test.reshape((-1, 28 * 28))
 
+
 # Parameter
 batch_size = 256
 train_buf = 60000
@@ -53,55 +54,16 @@ train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
 
-image_size = 784
-h_dim = 1000
-z_dim = 2
-
-
-# Unsupervised AAE Model
-# def create_encoder():
-#     inputs = tf.keras.Input(shape=(image_size,))
-#     x = tf.keras.layers.Dense(h_dim)(inputs)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     x = tf.keras.layers.Dense(h_dim)(x)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     encoded = tf.keras.layers.Dense(z_dim)(x)
-#     model = tf.keras.Model(inputs=inputs, outputs=encoded)
-#     return model
-#
-#
-# def create_decoder():
-#     encoded = tf.keras.Input(shape=(z_dim,))
-#     x = tf.keras.layers.Dense(h_dim)(encoded)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     x = tf.keras.layers.Dense(h_dim)(x)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     reconstruction = tf.keras.layers.Dense(image_size, activation='sigmoid')(x)
-#     model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
-#     return model
-#
-#
-# def create_discriminator():
-#     encoded = tf.keras.Input(shape=(z_dim,))
-#     x = tf.keras.layers.Dense(h_dim)(encoded)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     x = tf.keras.layers.Dense(h_dim)(x)
-#     x = tf.keras.layers.LeakyReLU()(x)
-#     x = tf.keras.layers.Dropout(0.5)(x)
-#     prediction = tf.keras.layers.Dense(1)(x)
-#     model = tf.keras.Model(inputs=encoded, outputs=prediction)
-#     return model
-
 
 # Creating the models
-encoder = models.create_encoder(image_size, h_dim, z_dim)
-decoder = models.create_decoder(image_size, h_dim, z_dim)
-discriminator = models.create_discriminator(image_size, h_dim, z_dim)
+aae = models.UnsupervisedDeterministic()
+z_dim = aae.z_dim
+h_dim = aae.h_dim
+image_size = aae.image_size
+
+encoder = aae.encoder
+decoder = aae.decoder
+discriminator = aae.discriminator
 
 encoder.summary()
 decoder.summary()

@@ -15,45 +15,104 @@ from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-# Models for unsupervised AAE
 # Encoder
-def create_encoder(image_size, h_dim, z_dim):
-    inputs = tf.keras.Input(shape=(image_size,))
-    x = tf.keras.layers.Dense(h_dim)(inputs)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(h_dim)(x)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    encoded = tf.keras.layers.Dense(z_dim)(x)
-    model = tf.keras.Model(inputs=inputs, outputs=encoded)
-    return model
+class UnsupervisedDeterministic:
+    def __init__(self):
+        self.image_size = 784
+        self.h_dim = 1000
+        self.z_dim = 2
 
-def create_decoder(image_size, h_dim, z_dim):
-    encoded = tf.keras.Input(shape=(z_dim,))
-    x = tf.keras.layers.Dense(h_dim)(encoded)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(h_dim)(x)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    reconstruction = tf.keras.layers.Dense(image_size, activation='sigmoid')(x)
-    model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
-    return model
+        self.encoder = self.create_encoder()
+        self.decoder = self.create_decoder()
+        self.discriminator = self.create_discriminator()
 
+    def create_encoder(self):
+        inputs = tf.keras.Input(shape=(self.image_size,))
+        x = tf.keras.layers.Dense(self.h_dim)(inputs)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        encoded = tf.keras.layers.Dense(self.z_dim)(x)
+        model = tf.keras.Model(inputs=inputs, outputs=encoded)
+        return model
 
-def create_discriminator(image_size, h_dim, z_dim):
-    encoded = tf.keras.Input(shape=(z_dim,))
-    x = tf.keras.layers.Dense(h_dim)(encoded)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    x = tf.keras.layers.Dense(h_dim)(x)
-    x = tf.keras.layers.LeakyReLU()(x)
-    x = tf.keras.layers.Dropout(0.5)(x)
-    prediction = tf.keras.layers.Dense(1)(x)
-    model = tf.keras.Model(inputs=encoded, outputs=prediction)
-    return model
+    # Decoder
+    def create_decoder(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        reconstruction = tf.keras.layers.Dense(self.image_size, activation='sigmoid')(x)
+        model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
+        return model
+
+    # Discriminator
+    def create_discriminator(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        prediction = tf.keras.layers.Dense(1)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=prediction)
+        return model
+
+class SupervisedDeterministic:
+    def __init__(self):
+        self.image_size = 784
+        self.h_dim = 1000
+        self.z_dim = 2
+        self.n_labels = 10
+
+        self.encoder = self.create_encoder_s()
+        self.decoder = self.create_decoder_s()
+        self.discriminator = self.create_discriminator_s()
+
+    def create_encoder_s(self):
+        inputs = tf.keras.Input(shape=(self.image_size,))
+        x = tf.keras.layers.Dense(self.h_dim)(inputs)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        encoded = tf.keras.layers.Dense(self.z_dim)(x)
+        model = tf.keras.Model(inputs=inputs, outputs=encoded)
+        return model
+
+    def create_decoder_s(self):
+        encoded = tf.keras.Input(shape=(self.z_dim + self.n_labels,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        reconstruction = tf.keras.layers.Dense(self.image_size, activation='sigmoid')(x)
+        model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
+        return model
+
+    def create_discriminator_s(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        prediction = tf.keras.layers.Dense(1)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=prediction)
+        return model
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -74,8 +133,8 @@ class GAN():
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
         self.discriminator.compile(loss='binary_crossentropy',
-            optimizer=optimizer,
-            metrics=['accuracy'])
+                                   optimizer=optimizer,
+                                   metrics=['accuracy'])
 
         # Build the generator
         self.generator = self.build_generator()
@@ -94,7 +153,6 @@ class GAN():
         # Trains the generator to fool the discriminator
         self.combined = Model(z, validity)
         self.combined.compile(loss='binary_crossentropy', optimizer=optimizer)
-
 
     def build_generator(self):
 
@@ -179,7 +237,7 @@ class GAN():
             g_loss = self.combined.train_on_batch(noise, valid)
 
             # Plot the progress
-            print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss))
+            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100 * d_loss[1], g_loss))
 
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:
@@ -197,8 +255,8 @@ class GAN():
         cnt = 0
         for i in range(r):
             for j in range(c):
-                axs[i,j].imshow(gen_imgs[cnt, :,:,0], cmap='gray')
-                axs[i,j].axis('off')
+                axs[i, j].imshow(gen_imgs[cnt, :, :, 0], cmap='gray')
+                axs[i, j].axis('off')
                 cnt += 1
         fig.savefig("figures/%d.png" % epoch)
         plt.close()
