@@ -66,6 +66,7 @@ class UnsupervisedDeterministic:
         model = tf.keras.Model(inputs=encoded, outputs=prediction)
         return model
 
+
 class SupervisedDeterministic:
     def __init__(self):
         self.image_size = 784
@@ -114,6 +115,61 @@ class SupervisedDeterministic:
         return model
 
 
+class SemiSupervisedDeterministic:
+    def __init__(self):
+        self.image_size = 784
+        self.h_dim = 1000
+        self.z_dim = 2
+        self.n_labels = 10
+
+    def create_encoder_semi(self):
+        inputs = tf.keras.Input(shape=(self.image_size,))
+        x = tf.keras.layers.Dense(self.h_dim)(inputs)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        encoded = tf.keras.layers.Dense(self.z_dim)(x)
+        generated_labels = tf.keras.layers.Dense(self.n_labels)(x)
+        model = tf.keras.Model(inputs=inputs, outputs=encoded)
+        return model, generated_labels
+
+    def create_decoder_semi(self):
+        encoded = tf.keras.Input(shape=(self.z_dim + self.n_labels,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        reconstruction = tf.keras.layers.Dense(self.image_size, activation='sigmoid')(x)
+        model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
+        return model
+
+    def create_discriminator_style(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        prediction = tf.keras.layers.Dense(1)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=prediction)
+        return model
+
+    def create_discriminator_label(self):
+        encoded = tf.keras.Input(shape=(self.n_labels,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        prediction = tf.keras.layers.Dense(1)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=prediction)
+        return model
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------

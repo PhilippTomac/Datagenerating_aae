@@ -41,3 +41,4 @@ train_buf = 60000
 train_dataset = tf.data.Dataset.from_tensor_slices((mnist.x_train, mnist.y_train))
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
+
