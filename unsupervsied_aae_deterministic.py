@@ -27,7 +27,7 @@ np.random.seed(random_seed)
 output_dir = ROOT_PATH / 'output'
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'unsup'
+experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
 latent_space_dir = experiment_dir / 'latent_space'
@@ -101,7 +101,7 @@ n_samples = 60000
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
 
-n_epochs = 600
+n_epochs = 601
 
 # Optimizier
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)

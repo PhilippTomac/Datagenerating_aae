@@ -122,6 +122,11 @@ class SemiSupervisedDeterministic:
         self.z_dim = 2
         self.n_labels = 10
 
+        self.encoder = self.create_encoder_semi()
+        self.decoder = self.create_decoder_semi()
+        self.discriminator_label = self.create_discriminator_label()
+        self.discriminator_style = self.create_discriminator_style()
+
     def create_encoder_semi(self):
         inputs = tf.keras.Input(shape=(self.image_size,))
         x = tf.keras.layers.Dense(self.h_dim)(inputs)
