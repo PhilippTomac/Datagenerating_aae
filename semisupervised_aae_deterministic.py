@@ -35,6 +35,7 @@ latent_space_dir.mkdir(exist_ok=True)
 # Data
 # @TODO Wie mach ich das Ganze semi supervised?!
 mnist = DataHandler.MNIST()
+
 batch_size = 256
 train_buf = 60000
 
@@ -52,6 +53,7 @@ h_dim = aae.h_dim
 z_dim = aae.z_dim
 
 encoder_ae = aae.create_encoder_semi(False)
+# hier Fehler: bzw Warning: Gradient cant be updated
 generator_y = aae.create_encoder_semi(True)
 decoder = aae.create_decoder_semi()
 discriminator_labels = aae.create_discriminator_label()
@@ -126,7 +128,7 @@ def train_step(batch_x):
     #       one for the style variable
     #       one for the labels Cat(y)
 
-    with tf.GradientTape(persistent=True) as dc_tape:
+    with tf.GradientTape() as dc_tape1, tf.GradientTape() as dc_tape2:
         # Discriminator for the labels
         # Creating the Cat-Distribution for the labels
         real_label_distribution = np.random.randint(low=0, high=10, size=batch_size)
@@ -154,17 +156,17 @@ def train_step(batch_x):
         dc_z_acc = accuracy(tf.concat([tf.ones_like(dc_z_real), tf.zeros_like(dc_z_fake)], axis=0),
                             tf.concat([dc_z_real, dc_y_fake], axis=0))
 
-        dc_y_grads = dc_tape.gradient(dc_y_loss, discriminator_labels.trainable_variables)
+        dc_y_grads = dc_tape1.gradient(dc_y_loss, discriminator_labels.trainable_variables)
         dc_optimizer.apply_gradients(zip(dc_y_grads, discriminator_labels.trainable_variables))
 
-        dc_z_grads = dc_tape.gradient(dc_z_loss, discriminator_style.trainable_variables)
+        dc_z_grads = dc_tape2.gradient(dc_z_loss, discriminator_style.trainable_variables)
         dc_optimizer.apply_gradients(zip(dc_z_grads, discriminator_style.trainable_variables))
 
         # Training Generator
         # one Generator(=Encoder) but 2 Outputs
         # So Generator must be trained for z and y
         #       --> gen_y_loss and gen_y_loss
-        with tf.GradientTape(persistent=True) as gen_tape:
+        with tf.GradientTape() as gen_tape:
             encoder_z, encoder_y = generator_y(batch_x, training=True)
             dc_y_fake = discriminator_labels(encoder_y, training=True)
             dc_z_fake = discriminator_style(encoder_z, training=True)
@@ -174,13 +176,12 @@ def train_step(batch_x):
             # Generator loss z
             gen_z_loss = generator_loss(dc_z_fake, gen_loss_weight)
 
-        gen_y_grads = gen_tape.gradient(gen_y_loss, generator_y.trainable_variables)
-        gen_optimizer.apply_gradients(zip(gen_y_grads, generator_y.trainable_variables))
+            gen_loss = gen_z_loss + gen_y_loss
 
-        gen_z_grads = gen_tape.gradient(gen_z_loss, generator_y.trainable_variables)
-        gen_optimizer.apply_gradients(zip(gen_z_grads, generator_y.trainable_variables))
+        gen_grads = gen_tape.gradient(gen_loss, generator_y.trainable_variables)
+        gen_optimizer.apply_gradients(zip(gen_grads, generator_y.trainable_variables))
 
-        return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_y_loss, gen_z_loss
+        return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss
 
 
 for epoch in range(n_epochs):
@@ -191,42 +192,65 @@ for epoch in range(n_epochs):
         max_lr = max_lr / 2
         step_size = step_size / 2
 
-        print('learning rate changed!')
+    epoch_ae_loss_avg = tf.metrics.Mean()
+    epoch_dc_y_loss_avg = tf.metrics.Mean()
+    epoch_dc_y_acc_avg = tf.metrics.Mean()
+    epoch_dc_z_loss_avg = tf.metrics.Mean()
+    epoch_dc_z_acc_avg = tf.metrics.Mean()
+    epoch_gen_loss_avg = tf.metrics.Mean()
 
-        epoch_ae_loss_avg = tf.metrics.Mean()
-        epoch_dc_loss_avg = tf.metrics.Mean()
-        epoch_dc_acc_avg = tf.metrics.Mean()
-        epoch_gen_loss_avg = tf.metrics.Mean()
+    for batch, (batch_x) in enumerate(train_dataset):
+        # -------------------------------------------------------------------------------------------------------------
+        # Calculate cyclic learning rate
+        global_step = global_step + 1
+        cycle = np.floor(1 + global_step / (2 * step_size))
+        x_lr = np.abs(global_step / step_size - 2 * cycle + 1)
+        clr = base_lr + (max_lr - base_lr) * max(0, 1 - x_lr)
+        ae_optimizer.lr = clr
+        dc_optimizer.lr = clr
+        gen_optimizer.lr = clr
 
-        for batch, (batch_x) in enumerate(train_dataset):
-            # -------------------------------------------------------------------------------------------------------------
-            # Calculate cyclic learning rate
-            global_step = global_step + 1
-            cycle = np.floor(1 + global_step / (2 * step_size))
-            x_lr = np.abs(global_step / step_size - 2 * cycle + 1)
-            clr = base_lr + (max_lr - base_lr) * max(0, 1 - x_lr)
-            ae_optimizer.lr = clr
-            dc_optimizer.lr = clr
-            gen_optimizer.lr = clr
+        ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss = train_step(batch_x)
 
-            ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_y_loss, gen_z_loss = train_step(batch_x)
+        epoch_ae_loss_avg(ae_loss)
 
-            epoch_ae_loss_avg(ae_loss)
+        epoch_dc_y_loss_avg(dc_y_loss)
+        epoch_dc_y_acc_avg(dc_y_acc)
 
-            epoch_dc_loss_avg(dc_y_loss)
-            epoch_dc_acc_avg(dc_y_acc)
+        epoch_dc_z_loss_avg(dc_z_loss)
+        epoch_dc_z_acc_avg(dc_z_acc)
 
-            epoch_dc_loss_avg(dc_z_loss)
-            epoch_dc_acc_avg(dc_z_acc)
+        epoch_gen_loss_avg(gen_loss)
 
-            epoch_gen_loss_avg(gen_y_loss)
-            epoch_gen_loss_avg(gen_z_loss)
+    epoch_time = time.time() - start
+    print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
+            .format(epoch, epoch_time,
+                    epoch_time * (n_epochs - epoch),
+                    epoch_ae_loss_avg.result(),
+                    epoch_dc_y_loss_avg.result(),
+                    epoch_dc_y_acc_avg.result(),
+                    epoch_dc_z_loss_avg.result(),
+                    epoch_dc_z_acc_avg.result(),
+                    epoch_gen_loss_avg.result()))
 
-        epoch_time = time.time() - start
-        print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
-              .format(epoch, epoch_time,
-                      epoch_time * (n_epochs - epoch),
-                      epoch_ae_loss_avg.result(),
-                      epoch_dc_loss_avg.result(),
-                      epoch_dc_acc_avg.result(),
-                      epoch_gen_loss_avg.result()))
+    if epoch % 100 == 0:
+        # Latent space of test set
+        x_test_encoded, _ = encoder_ae(mnist.x_test, training=False)
+        label_list = list(mnist.y_test)
+
+        fig = plt.figure()
+        classes = set(label_list)
+        colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
+        kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
+        ax = plt.subplot(111, aspect='equal')
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
+                    for i, class_ in enumerate(classes)]
+        ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
+        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], s=2, **kwargs)
+        ax.set_xlim([-3, 3])
+        ax.set_ylim([-3, 3])
+
+        plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
+        plt.close('all')
