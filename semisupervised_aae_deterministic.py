@@ -89,14 +89,19 @@ dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 n_epochs = 601
-
+n_labels = 10
 # Training
 @tf.function
-def train_step(batch_x):
+def train_step(batch_x, batch_y):
     # Autoencoder
+    # Reconstruction phase
     with tf.GradientTape() as ae_tape:
-        encoder_output = encoder(batch_x, training=True)
-        decoder_output = decoder(encoder_output, training=True)
+        # Output of encoder is z and y
+        encoder_output, generated_labels = encoder(batch_x, training=True)
+        # Could be splittet in:
+            # decouter_input = tf.concat([encoder_output, generated_labels], axis=1)
+            # decoder_output = decoder(decoder_input)
+        decoder_output = decoder(tf.concat([encoder_output, generated_labels], axis=1), training=True)
 
         # Autoencoder loss
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
@@ -104,12 +109,12 @@ def train_step(batch_x):
     ae_grads = ae_tape.gradient(ae_loss, encoder.trainable_variables + decoder.trainable_variables)
     ae_optimizer.apply_gradients(zip(ae_grads, encoder.trainable_variables + decoder.trainable_variables))
 
-    # Discriminator
+    # Discriminator Style
     with tf.GradientTape() as dc_tape:
-        real_distribution = tf.random.normal([batch_x.shape[0], aae.z_dim], mean=0.0, stddev=1.0)
+        real_distribution_z = tf.random.normal([batch_x.shape[0], aae.z_dim], mean=0.0, stddev=1.0)
         encoder_output = encoder(batch_x, training=True)
 
-        dc_real = discriminator_style(real_distribution, training=True)
+        dc_real = discriminator_style(real_distribution_z, training=True)
         dc_fake = discriminator_style(encoder_output, training=True)
 
         # Discriminator Loss
@@ -121,6 +126,24 @@ def train_step(batch_x):
 
     dc_grads = dc_tape.gradient(dc_loss, discriminator_style.trainable_variables)
     dc_optimizer.apply_gradients(zip(dc_grads, discriminator_style.trainable_variables))
+
+    # Discriminator Labels
+    with tf.GradientTape() as dc_tape:
+        real_distribution_y = np.random.randint(low=0, high=np.shape(mnist.y_train)[0], size=batch_size)
+        encoder_output = encoder(batch_y, training=True)
+
+        dc_real = discriminator_labels(real_distribution_y, training=True)
+        dc_fake = discriminator_labels(encoder_output, training=True)
+
+        # Discriminator loss
+        dc_loss = discriminator_loss([dc_real, dc_fake], axis=0)
+
+        # Discriminator ACC
+        dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
+                          tf.concat([dc_real, dc_fake], axis=0))
+
+        dc_grads = dc_tape.gradient(dc_loss, discriminator_labels.trainable_variables)
+        dc_optimizer.apply_gradients(zip(dc_grads, discriminator_labels.trainable_variables))
 
     # Generator (Encoder)
     with tf.GradientTape() as gen_tape:
