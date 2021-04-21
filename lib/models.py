@@ -125,15 +125,13 @@ class SemiSupervisedDeterministic:
         self.h_dim = 1000
         self.z_dim = 2
         self.n_labels = 10
+        self.n_labeled = 1000
 
         # Createing the Modelparts of the Semi Supervised AAE
-        self.encoder = self.create_encoder_semi()
-        self.decoder = self.create_decoder_semi()
-        self.discriminator_label = self.create_discriminator_label()
-        self.discriminator_style = self.create_discriminator_style()
+
 
     # Function to create the encoder
-    def create_encoder_semi(self):
+    def create_encoder_semi(self, supervised=False):
         # Input is the Data x (image)
         inputs = tf.keras.Input(shape=(self.image_size,))
         x = tf.keras.layers.Dense(self.h_dim)(inputs)
@@ -142,13 +140,17 @@ class SemiSupervisedDeterministic:
         x = tf.keras.layers.Dense(self.h_dim)(x)
         x = tf.keras.layers.LeakyReLU()(x)
         x = tf.keras.layers.Dropout(0.5)(x)
-
         # 2 Outputs
         # Output Style variable z for reconstruction of the input
         encoded = tf.keras.layers.Dense(self.z_dim)(x)
         # Output of the labels with a softmax Cat(y)
-        encoded_labels = tf.keras.layers.Softmax(self.n_labels)(x)
-        model = tf.keras.Model(inputs=inputs, outputs=(encoded, encoded_labels))
+        if supervised is False:
+            encoded_labels = tf.keras.layers.Dense(self.n_labels, activation='softmax')(x)
+        else:
+            # Needed for training of the encoder
+            encoded_labels = tf.keras.layers.Dense(self.n_labels)(x)
+
+        model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels])
         return model
 
     def create_decoder_semi(self):
