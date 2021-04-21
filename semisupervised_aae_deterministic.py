@@ -223,7 +223,8 @@ for epoch in range(n_epochs):
         epoch_gen_loss_avg(gen_loss)
 
     epoch_time = time.time() - start
-    print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
+    print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
+          'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f}' \
             .format(epoch, epoch_time,
                     epoch_time * (n_epochs - epoch),
                     epoch_ae_loss_avg.result(),
