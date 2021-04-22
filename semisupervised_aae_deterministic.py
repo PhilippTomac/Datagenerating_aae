@@ -33,7 +33,8 @@ latent_space_dir = experiment_dir / 'latent_space'
 latent_space_dir.mkdir(exist_ok=True)
 
 # Data
-# @TODO Wie mach ich das Ganze semi supervised?!
+# TODO Wie mach ich das Ganze semi supervised?
+# Problem: Vorverarbeiten der Daten
 mnist = DataHandler.MNIST()
 
 batch_size = 256
@@ -131,6 +132,7 @@ def train_step(batch_x):
     with tf.GradientTape() as dc_tape1, tf.GradientTape() as dc_tape2:
         # Discriminator for the labels
         # Creating the Cat-Distribution for the labels
+        # Create random num: batch_size labels between 0 and 9
         real_label_distribution = np.random.randint(low=0, high=10, size=batch_size)
         real_label_distribution = np.eye(10)[real_label_distribution]
         real_z_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
@@ -187,7 +189,7 @@ def train_step(batch_x):
 for epoch in range(n_epochs):
     start = time.time()
 
-    if epoch in [60, 100, 300]:
+    if epoch in [100, 300, 500]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2
@@ -225,14 +227,14 @@ for epoch in range(n_epochs):
     epoch_time = time.time() - start
     print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
           'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f}' \
-            .format(epoch, epoch_time,
-                    epoch_time * (n_epochs - epoch),
-                    epoch_ae_loss_avg.result(),
-                    epoch_dc_y_loss_avg.result(),
-                    epoch_dc_y_acc_avg.result(),
-                    epoch_dc_z_loss_avg.result(),
-                    epoch_dc_z_acc_avg.result(),
-                    epoch_gen_loss_avg.result()))
+          .format(epoch, epoch_time,
+                  epoch_time * (n_epochs - epoch),
+                  epoch_ae_loss_avg.result(),
+                  epoch_dc_y_loss_avg.result(),
+                  epoch_dc_y_acc_avg.result(),
+                  epoch_dc_z_loss_avg.result(),
+                  epoch_dc_z_acc_avg.result(),
+                  epoch_gen_loss_avg.result()))
 
     if epoch % 100 == 0:
         # Latent space of test set
@@ -247,7 +249,7 @@ for epoch in range(n_epochs):
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
-                    for i, class_ in enumerate(classes)]
+                   for i, class_ in enumerate(classes)]
         ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
         plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], s=2, **kwargs)
         ax.set_xlim([-3, 3])
