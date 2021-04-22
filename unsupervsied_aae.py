@@ -35,6 +35,7 @@ latent_space_dir.mkdir(exist_ok=True)
 
 # load MNIST dataset
 # TODO: Datensatz MNIST aufbereiten fuer semi-supervised und in Datahandler Klasse auslagern
+# TODO: DataHandler Importieren und Szenaroen für Plots überlegen
 print("MNIST Dataset loading unsupervised")
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
