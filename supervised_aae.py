@@ -1,5 +1,5 @@
 from lib import DataHandler, models
-
+from lib.models import AAE
 import time
 from pathlib import Path
 
@@ -8,20 +8,21 @@ import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
 
+# ----------------------------------------------------------------------------------------------------------------------
 # Reduce the hunger of TF when we're training on a GPU
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
 except IndexError:
     tf.config.run_functions_eagerly(True)
     pass  # No GPUs available
-
+# ----------------------------------------------------------------------------------------------------------------------
 PROJECT_ROOT = Path.cwd()
 
 # Setting the seed
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
-
+# ----------------------------------------------------------------------------------------------------------------------
 # Order für Plots
 output_dir = PROJECT_ROOT / 'output'
 output_dir.mkdir(exist_ok=True)
@@ -32,19 +33,29 @@ experiment_dir.mkdir(exist_ok=True)
 latent_space_dir = experiment_dir / 'latent_space'
 latent_space_dir.mkdir(exist_ok=True)
 
+# ----------------------------------------------------------------------------------------------------------------------
 # Data MNIST
-mnist = DataHandler.MNIST()
+print("Loading data...")
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+x_train = x_train.astype('float32') / 255.
+x_test = x_test.astype('float32') / 255.
+
+# Flatten the dataset
+x_train = x_train.reshape((-1, 28 * 28))
+x_test = x_test.reshape((-1, 28 * 28))
 
 # Parameter
 batch_size = 256
 train_buf = 60000
 
-train_dataset = tf.data.Dataset.from_tensor_slices((mnist.x_train, mnist.y_train))
+train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
+# ----------------------------------------------------------------------------------------------------------------------
 
 # Supervsied, deterministic Modell
-aae = models.SupervisedDeterministic()
+aae = AAE()
 
 # Parameter for the model
 z_dim = aae.z_dim
@@ -52,14 +63,15 @@ h_dim = aae.h_dim
 image_size = aae.image_size
 n_labels = aae.n_labels
 
-#creating the model parts
-encoder = aae.encoder
-decoder = aae.decoder
-discriminator = aae.discriminator
+# creating the model parts
+encoder = aae.create_encoder()
+decoder = aae.create_decoder_sup_semi()
+discriminator = aae.create_discriminator_style()
 
 encoder.summary()
 decoder.summary()
 discriminator.summary()
+# ----------------------------------------------------------------------------------------------------------------------
 
 # Loss Function
 ae_loss_weight = 1.
@@ -84,6 +96,9 @@ def discriminator_loss(real_output, fake_output, loss_weight):
 def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 # learning rate
 base_lr = 0.00025
 max_lr = 0.0025
@@ -96,6 +111,9 @@ global_step = 0
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 # Training function
 @tf.function
@@ -192,11 +210,10 @@ for epoch in range(n_epochs):
                   epoch_dc_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
-    # -------------------------------------------------------------------------------------------------------------
     if epoch % 100 == 0:
         # Latent space of test set
-        x_test_encoded = encoder(mnist.x_test, training=False)
-        label_list = list(mnist.y_test)
+        x_test_encoded = encoder(x_test, training=False)
+        label_list = list(y_test)
 
         fig = plt.figure()
         classes = set(label_list)

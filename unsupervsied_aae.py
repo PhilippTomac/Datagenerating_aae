@@ -57,14 +57,14 @@ train_dataset = train_dataset.batch(batch_size)
 
 
 # Creating the models
-aae = models.UnsupervisedDeterministic()
+aae = models.AAE()
 z_dim = aae.z_dim
 h_dim = aae.h_dim
 image_size = aae.image_size
 
-encoder = aae.encoder
-decoder = aae.decoder
-discriminator = aae.discriminator
+encoder = aae.create_encoder()
+decoder = aae.create_decoder()
+discriminator = aae.create_discriminator_style()
 
 encoder.summary()
 decoder.summary()

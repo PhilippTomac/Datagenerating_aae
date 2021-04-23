@@ -8,12 +8,15 @@ from lib import models, DataHandler
 import time
 from pathlib import Path
 
+# -------------------------------------------------------------------------------------------------------------
+
 # Reduce the hunger of TF when we're training on a GPU
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
 except IndexError:
     tf.config.run_functions_eagerly(True)
     pass  # No GPUs available
+    # -------------------------------------------------------------------------------------------------------------
 
 ROOT_PATH = Path.cwd()
 
@@ -21,6 +24,7 @@ ROOT_PATH = Path.cwd()
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
+# -------------------------------------------------------------------------------------------------------------
 
 # Path for images and results
 output_dir = ROOT_PATH / 'output'
@@ -31,21 +35,31 @@ experiment_dir.mkdir(exist_ok=True)
 
 latent_space_dir = experiment_dir / 'latent_space'
 latent_space_dir.mkdir(exist_ok=True)
+# -------------------------------------------------------------------------------------------------------------
 
 # Data
 # TODO Wie mach ich das Ganze semi supervised?
 # Problem: Vorverarbeiten der Daten
-mnist = DataHandler.MNIST()
+print("Loading data...")
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
+x_train = x_train.astype('float32') / 255.
+x_test = x_test.astype('float32') / 255.
+
+# Flatten the dataset
+x_train = x_train.reshape((-1, 28 * 28))
+x_test = x_test.reshape((-1, 28 * 28))
 
 batch_size = 256
 train_buf = 60000
 
-train_dataset = tf.data.Dataset.from_tensor_slices(mnist.x_train)
+train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
+# -------------------------------------------------------------------------------------------------------------
 
 # creating the model parts
-aae = models.SemiSupervisedDeterministic()
+aae = models.AAE()
 # Parameter
 image_size = aae.image_size
 n_labels = aae.n_labels
@@ -56,7 +70,7 @@ z_dim = aae.z_dim
 encoder_ae = aae.create_encoder_semi(False)
 # hier Fehler: bzw Warning: Gradient cant be updated
 generator_y = aae.create_encoder_semi(True)
-decoder = aae.create_decoder_semi()
+decoder = aae.create_decoder_sup_semi()
 discriminator_labels = aae.create_discriminator_label()
 discriminator_style = aae.create_discriminator_style()
 
@@ -65,6 +79,7 @@ generator_y.summary()
 decoder.summary()
 discriminator_labels.summary()
 discriminator_style.summary()
+# -------------------------------------------------------------------------------------------------------------
 
 # Loss Function
 ae_loss_weight = 1.
@@ -90,6 +105,8 @@ def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
 
+# -------------------------------------------------------------------------------------------------------------
+
 base_lr = 0.00025
 max_lr = 0.0025
 
@@ -103,6 +120,9 @@ dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 n_epochs = 601
+
+
+# -------------------------------------------------------------------------------------------------------------
 
 
 # Training
@@ -238,8 +258,8 @@ for epoch in range(n_epochs):
 
     if epoch % 100 == 0:
         # Latent space of test set
-        x_test_encoded, _ = encoder_ae(mnist.x_test, training=False)
-        label_list = list(mnist.y_test)
+        x_test_encoded, _ = encoder_ae(x_test, training=False)
+        label_list = list(y_test)
 
         fig = plt.figure()
         classes = set(label_list)
