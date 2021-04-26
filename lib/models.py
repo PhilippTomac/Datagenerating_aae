@@ -64,6 +64,38 @@ class AAE:
         model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels], name='Encoder')
         return model
 
+    def create_encoder_cnn(self):
+        inputs = tf.keras.layers.Input(shape=(28, 28, 1))
+
+        x = tf.keras.layers.Conv2D(filters=32, kernel_size=3, strides=2, padding='same')(inputs)
+        x = tf.keras.layers.LeakyReLU(0.2)(x)
+        x = tf.keras.layers.Conv2D(filters=64, kernel_size=3, strides=2, padding='same')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU(0.2)(x)
+        x = tf.keras.layers.Conv2D(filters=64, kernel_size=3, strides=2, padding='same')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU(0.2)(x)
+        x = tf.keras.layers.Conv2D(filters=128, kernel_size=3, strides=2, padding='same')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU(0.2)(x)
+        z = tf.keras.layers.Conv2D(filters=self.z_dim, kernel_size=3, strides=2, padding='same')(x)
+
+        model = tf.keras.Model(inputs=inputs, outputs=z)
+        return model
+
+    def create_encoder_gauss(self):
+        inputs = tf.keras.Input(shape=(self.image_size,))
+        x = tf.keras.layers.Dense(self.h_dim)(inputs)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        mean = tf.keras.layers.Dense(self.z_dim)(x)
+        stddev = tf.keras.layers.Dense(self.z_dim, activation='softplus')(x)
+        model = tf.keras.Model(inputs=inputs, outputs=[mean, stddev])
+        return model
+
     # ------------------------------------------------------------------------------------------------------------------
     # Decoders
     def create_decoder(self):
@@ -91,6 +123,18 @@ class AAE:
         model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
         return model
 
+    def create_decoder_gauss(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dense(self.h_dim)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
+        reconstruction = tf.keras.layers.Dense(self.image_size)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
+        return model
+
     # ------------------------------------------------------------------------------------------------------------------
     # Discrimininators
     def create_discriminator_style(self):
@@ -115,6 +159,16 @@ class AAE:
         x = tf.keras.layers.Dropout(0.5)(x)
         prediction = tf.keras.layers.Dense(1)(x)
         model = tf.keras.Model(inputs=encoded, outputs=prediction, name='disc_labels')
+        return model
+
+    def create_discriminator_gauss(self):
+        encoded = tf.keras.Input(shape=(self.z_dim,))
+        x = tf.keras.layers.Dense(self.h_dim / 4)(encoded)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dense(self.h_dim / 4)(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        prediction = tf.keras.layers.Dense(1)(x)
+        model = tf.keras.Model(inputs=encoded, outputs=prediction)
         return model
 # ----------------------------------------------------------------------------------------------------------------------
 

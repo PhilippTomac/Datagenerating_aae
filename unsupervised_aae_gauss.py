@@ -9,9 +9,10 @@ import time
 from pathlib import Path
 
 '''
-Deterministic unsupervised AAE:
-Here we assume that q(z|x) is a deterministic function of x. In this case, the encoder is similar to the encoder 
-of a standard autoencoder and the only source of stochasticity in q(z) is the data distribution, pd(x). 
+Gauss unsupervised AAE: Here we assume that q(z|x) is a Gaussian distribution whose mean and variance is predicted 
+by the encoder network: zi ∼ N(µi(x), σi(x)). In this case, the stochasticity in q(z) comes from both the 
+data-distribution and the randomness of the Gaussian distribution at the output of the encoder. We can use the same 
+re-parametrization trick of [Kingma and Welling, 2014] for back-propagation through the encoder network.
 '''
 
 # Reduce the hunger of TF when we're training on a GPU
@@ -32,7 +33,7 @@ np.random.seed(random_seed)
 output_dir = ROOT_PATH / 'output'
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'unsupervisied_aae'
+experiment_dir = output_dir / 'unsupervisied_aae_guass'
 experiment_dir.mkdir(exist_ok=True)
 
 latent_space_dir = experiment_dir / 'latent_space'
@@ -66,15 +67,15 @@ z_dim = aae.z_dim
 h_dim = aae.h_dim
 image_size = aae.image_size
 
-encoder = aae.create_encoder()
-decoder = aae.create_decoder()
-discriminator = aae.create_discriminator_style()
+encoder = aae.create_encoder_gauss()
+decoder = aae.create_decoder_gauss()
+discriminator = aae.create_discriminator_gauss()
 
 encoder.summary()
 decoder.summary()
 discriminator.summary()
 
-# loss functions
+# Define loss functions
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
@@ -97,8 +98,7 @@ def discriminator_loss(real_output, fake_output, loss_weight):
 def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
-
-# learing rate
+# Define cyclic learning rate
 base_lr = 0.00025
 max_lr = 0.0025
 
@@ -106,21 +106,25 @@ n_samples = 60000
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
 
-n_epochs = 601
+# -------------------------------------------------------------------------------------------------------------
+# Define optimizers
 
-# Optimizier
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
-
-# Training
 @tf.function
 def train_step(batch_x):
-    # Autoencoder
+    # -------------------------------------------------------------------------------------------------------------
+    # Autoencoder Training
     with tf.GradientTape() as ae_tape:
-        encoder_output = encoder(batch_x, training=True)
-        decoder_output = decoder(encoder_output, training=True)
+        # Using Encoder Output for the data distribution
+        z_mean, z_std = encoder(batch_x, training=True)
+
+        # Using Gauss distribution with the encoder output to generate data
+        gauss = tf.random.normal(shape=z_mean.shape, mean=0, stddev=1)
+        z = z_mean + (1e-8 + z_std) * gauss
+        decoder_output = decoder(z, training=True)
 
         # Autoencoder loss
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
@@ -128,13 +132,18 @@ def train_step(batch_x):
     ae_grads = ae_tape.gradient(ae_loss, encoder.trainable_variables + decoder.trainable_variables)
     ae_optimizer.apply_gradients(zip(ae_grads, encoder.trainable_variables + decoder.trainable_variables))
 
+    # -------------------------------------------------------------------------------------------------------------
     # Discriminator
     with tf.GradientTape() as dc_tape:
         real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
-        encoder_output = encoder(batch_x, training=True)
+        z_mean, z_std = encoder(batch_x, training=True)
+
+        # Probabilistic with Gaussian posterior distribution
+        gauss = tf.random.normal(shape=z_mean.shape, mean=0, stddev=1)
+        z = z_mean + (1e-8 + z_std) * gauss
 
         dc_real = discriminator(real_distribution, training=True)
-        dc_fake = discriminator(encoder_output, training=True)
+        dc_fake = discriminator(z, training=True)
 
         # Discriminator Loss
         dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
@@ -146,10 +155,16 @@ def train_step(batch_x):
     dc_grads = dc_tape.gradient(dc_loss, discriminator.trainable_variables)
     dc_optimizer.apply_gradients(zip(dc_grads, discriminator.trainable_variables))
 
+    # -------------------------------------------------------------------------------------------------------------
     # Generator (Encoder)
     with tf.GradientTape() as gen_tape:
-        encoder_output = encoder(batch_x, training=True)
-        dc_fake = discriminator(encoder_output, training=True)
+        z_mean, z_std = encoder(batch_x, training=True)
+
+        # Probabilistic with Gaussian posterior distribution
+        gauss = tf.random.normal(shape=z_mean.shape, mean=0, stddev=1)
+        z = z_mean + (1e-8 + z_std) * gauss
+
+        dc_fake = discriminator(z, training=True)
 
         # Generator loss
         gen_loss = generator_loss(dc_fake, gen_loss_weight)
@@ -159,14 +174,20 @@ def train_step(batch_x):
 
     return ae_loss, dc_loss, dc_acc, gen_loss
 
+
+# -------------------------------------------------------------------------------------------------------------
+# Training loop
+n_epochs = 601
 for epoch in range(n_epochs):
     start = time.time()
 
-    if epoch in [30, 60, 90]:
-        base_lr = base_lr/2
-        max_lr = max_lr/2
-        step_size = step_size/2
+    # Learning rate schedule
+    if epoch in [60, 100, 300]:
+        base_lr = base_lr / 2
+        max_lr = max_lr / 2
+        step_size = step_size / 2
 
+        print('learning rate changed!')
 
     epoch_ae_loss_avg = tf.metrics.Mean()
     epoch_dc_loss_avg = tf.metrics.Mean()
@@ -200,9 +221,11 @@ for epoch in range(n_epochs):
                   epoch_dc_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
+    # -------------------------------------------------------------------------------------------------------------
     if epoch % 100 == 0:
         # Latent space of test set
-        x_test_encoded = encoder(x_test, training=False)
+        z_mean, z_std = encoder(x_test, training=False)
+
         label_list = list(y_test)
 
         fig = plt.figure()
@@ -215,7 +238,7 @@ for epoch in range(n_epochs):
         handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
                    for i, class_ in enumerate(classes)]
         ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
-        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], s=2, **kwargs)
+        plt.scatter(z_mean[:, 0], z_mean[:, 1], s=2, **kwargs)
         ax.set_xlim([-3, 3])
         ax.set_ylim([-3, 3])
 

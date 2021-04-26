@@ -8,6 +8,12 @@ import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
 
+'''
+Deterministic supervised AAE:
+Here we assume that q(z|x) is a deterministic function of x. In this case, the encoder is similar to the encoder 
+of a standard autoencoder and the only source of stochasticity in q(z) is the data distribution, pd(x). 
+'''
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Reduce the hunger of TF when we're training on a GPU
 try:
