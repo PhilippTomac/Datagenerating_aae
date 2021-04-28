@@ -14,9 +14,42 @@ Testing how to prepre the dataset
 # ----------------------------------------------------------------------------------------------------------------------
 print('Process Data with DataHandler')
 mnist = MNIST(random_state=1993)
-print("-----------------------------------------------Training--------------------------------------------------------")
+# print("-----------------------------------------------Training--------------------------------------------------------")
+#
+# x_train, y_train = mnist.get_target_classifier_data('train', list(range(6, 9)), list(range(0, 5)))
+# print(x_train.shape)
+# print(y_train.shape)
+#
+# possible_digits = np.unique(y_train).tolist()
+# n_samples = len(y_train)
+# print(possible_digits)
+# print(n_samples)
+#
+# print("--------------------------------------------------Test------------------------------------------------------")
+# x_test, y_test = mnist.get_target_classifier_data('test', list(range(6, 9)), list(range(0, 5)))
+# print(x_test.shape)
+# print(y_test.shape)
+#
+# possible_digits = np.unique(y_test).tolist()
+# n_samples = len(y_test)
+# print(possible_digits)
+# print(n_samples)
+#
+#
+# print("------------------------------------------------Validation----------------------------------------------------")
+# x_val, y_val = mnist.get_target_classifier_data('val', list(range(6, 9)), list(range(0, 5)))
+# print(x_val.shape)
+# print(y_val.shape)
+#
+# possible_digits = np.unique(y_val).tolist()
+# n_samples = len(y_val)
+# print(possible_digits)
+# print(n_samples)
 
-x_train, y_train = mnist.get_target_classifier_data('train', list(range(6, 9)), list(range(0, 5)))
+
+print("---------------------------------------------------------------------------------------------------------------")
+print("-----------------------------------------------Training--------------------------------------------------------")
+x_train, y_train = mnist.get_alarm_data('train',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_train.shape)
 print(y_train.shape)
 
@@ -25,8 +58,8 @@ n_samples = len(y_train)
 print(possible_digits)
 print(n_samples)
 
-print("--------------------------------------------------Test------------------------------------------------------")
-x_test, y_test = mnist.get_target_classifier_data('test', list(range(6, 9)), list(range(0, 5)))
+print("-----------------------------------------------Test--------------------------------------------------------")
+x_test, y_test = mnist.get_alarm_data('test',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_test.shape)
 print(y_test.shape)
 
@@ -34,26 +67,13 @@ possible_digits = np.unique(y_test).tolist()
 n_samples = len(y_test)
 print(possible_digits)
 print(n_samples)
-
-
-print("------------------------------------------------Validation----------------------------------------------------")
-x_val, y_val = mnist.get_target_classifier_data('val', list(range(6, 9)), list(range(0, 5)))
+print("-----------------------------------------------Validation------------------------------------------------------")
+x_val, y_val = mnist.get_alarm_data('test',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_val.shape)
 print(y_val.shape)
 
 possible_digits = np.unique(y_val).tolist()
 n_samples = len(y_val)
-print(possible_digits)
-print(n_samples)
-
-
-print("---------------------------------------------------------------------------------------------------------------")
-x_train, y_train = mnist.get_alarm_data('train',  list(range(0, 5)), [6, 7], list(range(8, 10)), 0)
-print(x_train.shape)
-print(y_train.shape)
-
-possible_digits = np.unique(y_train).tolist()
-n_samples = len(y_train)
 print(possible_digits)
 print(n_samples)
 
