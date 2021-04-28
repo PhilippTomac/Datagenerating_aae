@@ -153,6 +153,7 @@ def train_step(batch_x):
         # Discriminator for the labels
         # Creating the Cat-Distribution for the labels
         # Create random num: batch_size labels between 0 and 9
+        # For semi supervised it should be 11 classes -> the new one is for unknown datapoitns
         real_label_distribution = np.random.randint(low=0, high=10, size=batch_size)
         real_label_distribution = np.eye(10)[real_label_distribution]
         real_z_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
@@ -187,7 +188,7 @@ def train_step(batch_x):
         # Training Generator
         # one Generator(=Encoder) but 2 Outputs
         # So Generator must be trained for z and y
-        #       --> gen_y_loss and gen_y_loss
+        #       --> gen_y_loss and gen_z_loss
         with tf.GradientTape() as gen_tape:
             encoder_z, encoder_y = generator_y(batch_x, training=True)
             dc_y_fake = discriminator_labels(encoder_y, training=True)

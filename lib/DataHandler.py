@@ -112,7 +112,7 @@ class DataLabels:
         this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
 
         # Make labels binary
-        this_y[np.where(~np.isin(this_y, anomaly_classes))] = -1
+        this_y[np.where(np.isin(this_y, anomaly_classes))] = -1
         this_y[np.where(np.isin(this_y, anomaly_classes))] = 0
         this_y += 1
         this_y = this_y.astype("uint8")
@@ -214,9 +214,14 @@ class MNIST(DataLabels):
         # Simply load the data with the kind help of Keras
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-        # Add channel dimension to the data
-        x_train = np.expand_dims(x_train, -1)
-        x_test = np.expand_dims(x_test, -1)
+        # Flatten the dataset
+        x_train = x_train.reshape((-1, 28 * 28))
+        x_test = x_test.reshape((-1, 28 * 28))
+
+
+        # # Add channel dimension to the data
+        # x_train = np.expand_dims(x_train, -1)
+        # x_test = np.expand_dims(x_test, -1)
 
         super(MNIST, self).__init__(
             x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, *args, **kwargs
@@ -233,6 +238,22 @@ class MNIST(DataLabels):
 
 
 @dataclass
+class ExperimentData:
+    """
+    All data needed for the experiment
+    """
+    train_target: tuple
+    train_classifier: tuple
+    train_alarm: tuple
+    val_target: tuple
+    val_classifier: tuple
+    val_alarm: tuple
+    test_target: tuple
+    test_classifier: tuple
+    test_alarm: tuple
+    data_shape: tuple
+
+@dataclass
 class ExperimentConfig:
     """
     Configuration which data is used in the respective experiment
@@ -242,4 +263,51 @@ class ExperimentConfig:
     train_anomaly: list  # Classes for known anomalies
     test_anomaly: list  # Classes for test anomalies
 
+    def to_data(
+            self, train_type: str = "train", test_type: str = "test", n_anomaly_samples: int = None
+    ) -> ExperimentData:
+        """
+        Convert the configuration to actual data
+        :param train_type: use the train or validation data for training (only used to load less data while debugging)
+        :param test_type: use the test or validation data for evaluation (i.e. code once, use twice)
+        :param n_anomaly_samples: limit the number of anomaly samples in the training data
+        """
+        return ExperimentData(
+            # Target training: all normal samples
+            train_target=self.data_set.get_target_autoencoder_data(
+                data_split=train_type, include_classes=self.train_normal
+            ),
+            train_classifier=self.data_set.get_target_classifier_data(
+                data_split=train_type, include_classes=self.train_normal
+            ),
+            # Alarm training: all normal samples plus the ones known to be anomalous
+            train_alarm=self.data_set.get_alarm_data(
+                data_split=train_type, include_classes=list(set(self.train_normal) | set(self.train_anomaly)),
+                anomaly_classes=self.train_anomaly, n_anomaly_samples=n_anomaly_samples
+            ),
+            # Target validation: all normal samples plus the ones that should also be anomalous while training
+            val_target=self.data_set.get_target_autoencoder_data(
+                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly))
+            ),
+            val_classifier=self.data_set.get_target_classifier_data(
+                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly))
+            ),
+            val_alarm=self.data_set.get_alarm_data(
+                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly)),
+                anomaly_classes=self.train_anomaly
+            ),
+            # Target testing: all normal samples plus the test anomalies
+            test_target=self.data_set.get_target_autoencoder_data(
+                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly))
+            ),
+            test_classifier=self.data_set.get_target_classifier_data(
+                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly))
+            ),
+            test_alarm=self.data_set.get_alarm_data(
+                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly)),
+                anomaly_classes=self.test_anomaly
+            ),
+            # Shape to generate networks
+            data_shape=self.data_set.shape
+        )
 

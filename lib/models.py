@@ -18,6 +18,9 @@ from keras.optimizers import Adam
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Encoder
+from tensorflow.python.keras.applications.densenet import layers
+
+
 class AAE:
     # Parameter
     def __init__(self):
@@ -170,8 +173,10 @@ class AAE:
         prediction = tf.keras.layers.Dense(1)(x)
         model = tf.keras.Model(inputs=encoded, outputs=prediction)
         return model
+
+    # @ TODO add Implementation from colab (GAN)
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------
 # models for basic
-# @ TODO add Implementation from colab (GAN)
+
