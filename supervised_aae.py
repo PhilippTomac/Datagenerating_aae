@@ -53,10 +53,10 @@ mnist = MNIST(random_state=random_seed)
 # x_train = x_train.reshape((-1, 28 * 28))
 # x_test = x_test.reshape((-1, 28 * 28))
 
-x_train, y_train = mnist.get_alarm_data('train',  list(range(0, 5)), None, list(range(0, 9)))
+x_train, y_train = mnist.get_alarm_data('train',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_train.shape)
 print(y_train.shape)
-x_test, y_test = mnist.get_alarm_data('test',  list(range(0, 5)), None, list(range(0, 9)))
+x_test, y_test = mnist.get_alarm_data('test',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_test.shape)
 print(y_test.shape)
 
@@ -237,7 +237,7 @@ for epoch in range(n_epochs):
 
         fig = plt.figure()
         classes = set(label_list)
-        colormap = plt.cm.rainbow(np.linspace(0, 1, len(n_labels)))
+        colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
         kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
         ax = plt.subplot(111, aspect='equal')
         box = ax.get_position()
