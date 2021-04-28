@@ -1,4 +1,5 @@
 from lib import DataHandler, models
+from lib.DataHandler import MNIST
 from lib.models import AAE
 import time
 from pathlib import Path
@@ -42,14 +43,27 @@ latent_space_dir.mkdir(exist_ok=True)
 # ----------------------------------------------------------------------------------------------------------------------
 # Data MNIST
 print("Loading data...")
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+mnist = MNIST(random_state=random_seed)
+# (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+#
+# x_train = x_train.astype('float32') / 255.
+# x_test = x_test.astype('float32') / 255.
+#
+# # Flatten the dataset
+# x_train = x_train.reshape((-1, 28 * 28))
+# x_test = x_test.reshape((-1, 28 * 28))
 
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
+x_train, y_train = mnist.get_alarm_data('train',  list(range(0, 5)), None, list(range(0, 9)))
+print(x_train.shape)
+print(y_train.shape)
+x_test, y_test = mnist.get_alarm_data('test',  list(range(0, 5)), None, list(range(0, 9)))
+print(x_test.shape)
+print(y_test.shape)
 
-# Flatten the dataset
-x_train = x_train.reshape((-1, 28 * 28))
-x_test = x_test.reshape((-1, 28 * 28))
+possible_digits = np.unique(y_test).tolist()
+n_samples = list(y_test)
+print(possible_digits)
+print(n_samples)
 
 # Parameter
 batch_size = 256
@@ -223,7 +237,7 @@ for epoch in range(n_epochs):
 
         fig = plt.figure()
         classes = set(label_list)
-        colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
+        colormap = plt.cm.rainbow(np.linspace(0, 1, len(n_labels)))
         kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
         ax = plt.subplot(111, aspect='equal')
         box = ax.get_position()
