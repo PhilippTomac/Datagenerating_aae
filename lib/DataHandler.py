@@ -9,9 +9,11 @@ from sklearn.base import TransformerMixin
 
 from typing import List, Union, Tuple
 
+'''
+Class to split the data in train, test and validition.
+Also to define what datapoints are included and what datapoints are normal/anomaly
+'''
 
-# TODO: Create DataHandler for MNIST
-# Loading the MNIST Dataset
 
 @dataclass
 class DataLabels:
@@ -30,6 +32,10 @@ class DataLabels:
     scaler: TransformerMixin = None
 
     # Configuration
+    # Parameters to split the Data
+    #   - training = 57000
+    #   - test = 10000
+    #   - validation = 3000
     test_split: float = .2  # Test data percentage
     val_split: float = .05  # Validation data percentage
     random_state: int = None  # Random seed
@@ -42,11 +48,10 @@ class DataLabels:
     def __repr__(self):
         return self.__class__.__name__
 
-    ## Retrievers
-    def get_target_autoencoder_data(
-            self, data_split: str,
-            drop_classes: Union[List[int], List[str]] = None, include_classes: Union[List[int], List[str]] = None
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    def get_data_unsupervised(self, data_split: str,
+                              drop_classes: Union[List[int], List[str]] = None,
+                              include_classes: Union[List[int], List[str]] = None
+                              ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Get data for useful for autoencoders
         :param data_split: get data of either "train", "val" or "test"
@@ -65,7 +70,7 @@ class DataLabels:
         # For the autoencoder, we don't need much else than x
         return this_x, this_x
 
-    def get_target_classifier_data(
+    def get_supervised_data(
             self, data_split: str,
             drop_classes: Union[List[int], List[str]] = None, include_classes: Union[List[int], List[str]] = None
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -88,7 +93,7 @@ class DataLabels:
         # Return the data
         return this_x, this_y
 
-    def get_alarm_data(
+    def get_semisupervised_data(
             self, data_split: str, anomaly_classes: Union[List[int], List[str]], drop_classes: List[int] = None,
             include_classes: List[int] = None,
             n_anomaly_samples: int = None
@@ -112,7 +117,7 @@ class DataLabels:
         this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
 
         # Make labels binary
-        this_y[np.where(np.isin(this_y, anomaly_classes))] = -1
+        this_y[np.where(~np.isin(this_y, anomaly_classes))] = -1
         this_y[np.where(np.isin(this_y, anomaly_classes))] = 0
         this_y += 1
         this_y = this_y.astype("uint8")
@@ -205,6 +210,8 @@ class DataLabels:
             raise ValueError("The requested data must be of either train, val or test set.")
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
 class MNIST(DataLabels):
     def __init__(self, *args, **kwargs):
         """
@@ -217,7 +224,6 @@ class MNIST(DataLabels):
         # Flatten the dataset
         x_train = x_train.reshape((-1, 28 * 28))
         x_test = x_test.reshape((-1, 28 * 28))
-
 
         # # Add channel dimension to the data
         # x_train = np.expand_dims(x_train, -1)
@@ -235,79 +241,3 @@ class MNIST(DataLabels):
         self.x_train = self.x_train / 255.
         self.x_test = self.x_test / 255.
         self.x_val = self.x_val / 255.
-
-
-@dataclass
-class ExperimentData:
-    """
-    All data needed for the experiment
-    """
-    train_target: tuple
-    train_classifier: tuple
-    train_alarm: tuple
-    val_target: tuple
-    val_classifier: tuple
-    val_alarm: tuple
-    test_target: tuple
-    test_classifier: tuple
-    test_alarm: tuple
-    data_shape: tuple
-
-@dataclass
-class ExperimentConfig:
-    """
-    Configuration which data is used in the respective experiment
-    """
-    data_set: DataLabels  # Data set to use
-    train_normal: list  # Classes for normal samples
-    train_anomaly: list  # Classes for known anomalies
-    test_anomaly: list  # Classes for test anomalies
-
-    def to_data(
-            self, train_type: str = "train", test_type: str = "test", n_anomaly_samples: int = None
-    ) -> ExperimentData:
-        """
-        Convert the configuration to actual data
-        :param train_type: use the train or validation data for training (only used to load less data while debugging)
-        :param test_type: use the test or validation data for evaluation (i.e. code once, use twice)
-        :param n_anomaly_samples: limit the number of anomaly samples in the training data
-        """
-        return ExperimentData(
-            # Target training: all normal samples
-            train_target=self.data_set.get_target_autoencoder_data(
-                data_split=train_type, include_classes=self.train_normal
-            ),
-            train_classifier=self.data_set.get_target_classifier_data(
-                data_split=train_type, include_classes=self.train_normal
-            ),
-            # Alarm training: all normal samples plus the ones known to be anomalous
-            train_alarm=self.data_set.get_alarm_data(
-                data_split=train_type, include_classes=list(set(self.train_normal) | set(self.train_anomaly)),
-                anomaly_classes=self.train_anomaly, n_anomaly_samples=n_anomaly_samples
-            ),
-            # Target validation: all normal samples plus the ones that should also be anomalous while training
-            val_target=self.data_set.get_target_autoencoder_data(
-                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly))
-            ),
-            val_classifier=self.data_set.get_target_classifier_data(
-                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly))
-            ),
-            val_alarm=self.data_set.get_alarm_data(
-                data_split="val", include_classes=list(set(self.train_normal) | set(self.train_anomaly)),
-                anomaly_classes=self.train_anomaly
-            ),
-            # Target testing: all normal samples plus the test anomalies
-            test_target=self.data_set.get_target_autoencoder_data(
-                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly))
-            ),
-            test_classifier=self.data_set.get_target_classifier_data(
-                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly))
-            ),
-            test_alarm=self.data_set.get_alarm_data(
-                data_split=test_type, include_classes=list(set(self.train_normal) | set(self.test_anomaly)),
-                anomaly_classes=self.test_anomaly
-            ),
-            # Shape to generate networks
-            data_shape=self.data_set.shape
-        )
-
