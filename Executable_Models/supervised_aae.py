@@ -34,7 +34,7 @@ np.random.seed(random_seed)
 output_dir = PROJECT_ROOT / 'output'
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'supervised_aae_deterministic'
+experiment_dir = output_dir / 'supervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
 latent_space_dir = experiment_dir / 'latent_space'

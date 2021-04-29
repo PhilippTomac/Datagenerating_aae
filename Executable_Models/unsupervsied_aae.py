@@ -51,15 +51,18 @@ latent_space_dir.mkdir(exist_ok=True)
 # # Flatten the dataset
 # x_train = x_train.reshape((-1, 28 * 28))
 # x_test = x_test.reshape((-1, 28 * 28))
-
 mnist = MNIST(random_state=random_seed)
-x_train, y_train = mnist.get_target_classifier_data('train', list(range(6, 9)), list(range(0, 5)))
+x_train, y_train = mnist.get_alarm_data('train',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_train.shape)
 print(y_train.shape)
-
-x_test, y_test = mnist.get_target_classifier_data('test', list(range(6, 9)), list(range(0, 5)))
+x_test, y_test = mnist.get_alarm_data('test',  list(range(6, 9)), None, list(range(0, 9)))
 print(x_test.shape)
 print(y_test.shape)
+
+possible_digits = np.unique(y_test).tolist()
+n_samples = list(y_test)
+print(possible_digits)
+print(n_samples)
 
 
 # Parameter
