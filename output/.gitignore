@@ -1,4 +1,5 @@
 # ignore the Output-Data
 unsupervisied_aae/
 supervised_aae/
+semisupervised_aae/
 mnist_analysis/

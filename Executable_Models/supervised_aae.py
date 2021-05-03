@@ -137,7 +137,6 @@ gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-
 # Training function
 @tf.function
 def train_step(batch_x, batch_y):

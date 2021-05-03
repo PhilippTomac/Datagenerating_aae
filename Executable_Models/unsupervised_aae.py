@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
-from loguru import logger
 from lib import models
 
 import time
@@ -38,7 +37,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'experiment_a7n2'
+latent_space_dir = experiment_dir / 'val_cpu_experiment_a7n2'
 latent_space_dir.mkdir(exist_ok=True)
 
 # Data MNIST
@@ -132,7 +131,6 @@ gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 # Training
 @tf.function
-@logger.catch
 def train_step(batch_x):
     # Autoencoder
     with tf.GradientTape() as ae_tape:
@@ -174,7 +172,7 @@ def train_step(batch_x):
     gen_grads = gen_tape.gradient(gen_loss, encoder.trainable_variables)
     gen_optimizer.apply_gradients(zip(gen_grads, encoder.trainable_variables))
 
-    return ae_loss, dc_loss, dc_acc, gen_loss
+    return ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator
 
 
 # Start the training
@@ -202,7 +200,7 @@ for epoch in range(n_epochs + 1):
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
 
-        ae_loss, dc_loss, dc_acc, gen_loss = train_step(batch_x)
+        ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator = train_step(batch_x)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)
@@ -247,8 +245,7 @@ for epoch in range(n_epochs + 1):
 # ---------------------------------------------------------------------------------------------------------------------
 # VALIDATION
 @tf.function
-@logger.catch
-def validation_step(batch_x):
+def validation_step(batch_x, encoder, decoder, discriminator):
     # Autoencoder
     encoder_output = encoder(batch_x, training=False)
     decoder_output = decoder(encoder_output, training=False)
@@ -289,7 +286,10 @@ for epoch in range(n_epochs + 1):
     epoch_gen_loss_avg = tf.metrics.Mean()
 
     for batch, (batch_x) in enumerate(val_dataset):
-        ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x)
+        ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x,
+                                                             encoder=encoder,
+                                                             decoder=decoder,
+                                                             discriminator=discriminator)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)
