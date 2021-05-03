@@ -139,6 +139,7 @@ gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Training function
+@tf.function
 def train_step(batch_x, batch_y):
     # -------------------------------------------------------------------------------------------------------------
     # Autoencoder
@@ -183,7 +184,7 @@ def train_step(batch_x, batch_y):
     gen_grads = gen_tape.gradient(gen_loss, encoder.trainable_variables)
     gen_optimizer.apply_gradients(zip(gen_grads, encoder.trainable_variables))
 
-    return ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator
+    return ae_loss, dc_loss, dc_acc, gen_loss,  # encoder, decoder, discriminator
 
 
 # -------------------------------------------------------------------------------------------------------------
@@ -258,44 +259,42 @@ for epoch in range(n_epochs + 1):
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 # VALIDATION
-@tf.function
-def validation_step(batch_x, batch_y, encoder, decoder, discriminator):
+def validation_step(batch_x, batch_y):
     # -------------------------------------------------------------------------------------------------------------
     # Autoencoder
-    with tf.GradientTape() as ae_tape:
-        encoder_output = encoder(batch_x, training=False)
-        decoder_output = decoder(tf.concat([encoder_output, tf.one_hot(batch_y, n_labels)], axis=1), training=False)
 
-        # Autoencoder loss
-        ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
+    encoder_output = encoder(batch_x, training=False)
+    decoder_output = decoder(tf.concat([encoder_output, tf.one_hot(batch_y, n_labels)], axis=1), training=False)
+
+    # Autoencoder loss
+    ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     # -------------------------------------------------------------------------------------------------------------
     # Discriminator
-    with tf.GradientTape() as dc_tape:
-        real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
-        encoder_output = encoder(batch_x, training=False)
+    real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
+    encoder_output = encoder(batch_x, training=False)
 
-        dc_real = discriminator(real_distribution, training=False)
-        dc_fake = discriminator(encoder_output, training=False)
+    dc_real = discriminator(real_distribution, training=False)
+    dc_fake = discriminator(encoder_output, training=False)
 
-        # Discriminator Loss
-        dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
+    # Discriminator Loss
+    dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
 
-        # Discriminator Acc
-        dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
-                          tf.concat([dc_real, dc_fake], axis=0))
+    # Discriminator Acc
+    dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
+                      tf.concat([dc_real, dc_fake], axis=0))
 
     # -------------------------------------------------------------------------------------------------------------
     # Generator (Encoder)
-    with tf.GradientTape() as gen_tape:
-        encoder_output = encoder(batch_x, training=False)
-        dc_fake = discriminator(encoder_output, training=False)
 
-        # Generator loss
-        gen_loss = generator_loss(dc_fake, gen_loss_weight)
+    encoder_output = encoder(batch_x, training=False)
+    dc_fake = discriminator(encoder_output, training=False)
+
+    # Generator loss
+    gen_loss = generator_loss(dc_fake, gen_loss_weight)
+
 
     return ae_loss, dc_loss, dc_acc, gen_loss
-
 
 # -------------------------------------------------------------------------------------------------------------
 # Validation loop
@@ -309,11 +308,7 @@ for epoch in range(n_epochs + 1):
 
     for batch, (batch_x, batch_y) in enumerate(val_dataset):
         ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x,
-                                                             batch_y,
-                                                             encoder=encoder,
-                                                             decoder=decoder,
-                                                             discriminator=discriminator
-                                                             )
+                                                             batch_y)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)

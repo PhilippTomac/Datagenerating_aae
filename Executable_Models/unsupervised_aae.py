@@ -174,7 +174,7 @@ def train_step(batch_x):
     gen_grads = gen_tape.gradient(gen_loss, encoder.trainable_variables)
     gen_optimizer.apply_gradients(zip(gen_grads, encoder.trainable_variables))
 
-    return ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator
+    return ae_loss, dc_loss, dc_acc, gen_loss
 
 
 # Start the training
