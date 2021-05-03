@@ -172,7 +172,7 @@ def train_step(batch_x):
     gen_grads = gen_tape.gradient(gen_loss, encoder.trainable_variables)
     gen_optimizer.apply_gradients(zip(gen_grads, encoder.trainable_variables))
 
-    return ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator
+    return ae_loss, dc_loss, dc_acc, gen_loss
 
 
 # Start the training
@@ -200,7 +200,7 @@ for epoch in range(n_epochs + 1):
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
 
-        ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator = train_step(batch_x)
+        ae_loss, dc_loss, dc_acc, gen_loss = train_step(batch_x)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)
@@ -243,86 +243,84 @@ for epoch in range(n_epochs + 1):
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
-# VALIDATION
-@tf.function
-def validation_step(batch_x, encoder, decoder, discriminator):
-    # Autoencoder
-    encoder_output = encoder(batch_x, training=False)
-    decoder_output = decoder(encoder_output, training=False)
+# # VALIDATION
+# @tf.function
+# def validation_step(batch_x, encoder, decoder, discriminator):
+#     # Autoencoder
+#     encoder_output = encoder(batch_x, training=False)
+#     decoder_output = decoder(encoder_output, training=False)
+#
+#     # Autoencoder loss
+#     ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
+#
+#     # Discriminator
+#     real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
+#     encoder_output = encoder(batch_x, training=False)
+#
+#     dc_real = discriminator(real_distribution, training=False)
+#     dc_fake = discriminator(encoder_output, training=False)
+#
+#     # Discriminator Loss
+#     dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
+#
+#     # Discriminator Acc
+#     dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
+#                       tf.concat([dc_real, dc_fake], axis=0))
+#
+#     # Generator (Encoder)
+#     encoder_output = encoder(batch_x, training=False)
+#     dc_fake = discriminator(encoder_output, training=False)
+#
+#     # Generator loss
+#     gen_loss = generator_loss(dc_fake, gen_loss_weight)
+#
+#     return ae_loss, dc_loss, dc_acc, gen_loss
+#
+# # Start the training
+# for epoch in range(n_epochs + 1):
+    # start = time.time()
+    #
+    # epoch_ae_loss_avg = tf.metrics.Mean()
+    # epoch_dc_loss_avg = tf.metrics.Mean()
+    # epoch_dc_acc_avg = tf.metrics.Mean()
+    # epoch_gen_loss_avg = tf.metrics.Mean()
+    #
+    # for batch, (batch_x) in enumerate(val_dataset):
+    #     ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x,
+    #                                                          encoder=encoder,
+    #                                                          decoder=decoder,
+    #                                                          discriminator=discriminator)
+    #
+    #     epoch_ae_loss_avg(ae_loss)
+    #     epoch_dc_loss_avg(dc_loss)
+    #     epoch_dc_acc_avg(dc_acc)
+    #     epoch_gen_loss_avg(gen_loss)
+    #
+    # epoch_time = time.time() - start
+    # print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
+    #       .format(epoch, epoch_time,
+    #               epoch_time * (n_epochs - epoch),
+    #               epoch_ae_loss_avg.result(),
+    #               epoch_dc_loss_avg.result(),
+    #               epoch_dc_acc_avg.result(),
+    #               epoch_gen_loss_avg.result()))
+# Latent space of test set
+x_val_encoded = encoder(x_val, training=False)
+label_list = list(y_val)
 
-    # Autoencoder loss
-    ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
+fig = plt.figure()
+classes = set(label_list)
+colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
+kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
+ax = plt.subplot(111, aspect='equal')
+box = ax.get_position()
+ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
+                for i, class_ in enumerate(classes)]
+ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
+plt.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], s=2, **kwargs)
+ax.set_xlim([-3, 3])
+ax.set_ylim([-3, 3])
 
-    # Discriminator
-    real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
-    encoder_output = encoder(batch_x, training=False)
-
-    dc_real = discriminator(real_distribution, training=False)
-    dc_fake = discriminator(encoder_output, training=False)
-
-    # Discriminator Loss
-    dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
-
-    # Discriminator Acc
-    dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
-                      tf.concat([dc_real, dc_fake], axis=0))
-
-    # Generator (Encoder)
-    encoder_output = encoder(batch_x, training=False)
-    dc_fake = discriminator(encoder_output, training=False)
-
-    # Generator loss
-    gen_loss = generator_loss(dc_fake, gen_loss_weight)
-
-    return ae_loss, dc_loss, dc_acc, gen_loss
-
-# Start the training
-for epoch in range(n_epochs + 1):
-    start = time.time()
-
-    epoch_ae_loss_avg = tf.metrics.Mean()
-    epoch_dc_loss_avg = tf.metrics.Mean()
-    epoch_dc_acc_avg = tf.metrics.Mean()
-    epoch_gen_loss_avg = tf.metrics.Mean()
-
-    for batch, (batch_x) in enumerate(val_dataset):
-        ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x,
-                                                             encoder=encoder,
-                                                             decoder=decoder,
-                                                             discriminator=discriminator)
-
-        epoch_ae_loss_avg(ae_loss)
-        epoch_dc_loss_avg(dc_loss)
-        epoch_dc_acc_avg(dc_acc)
-        epoch_gen_loss_avg(gen_loss)
-
-    epoch_time = time.time() - start
-    print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
-          .format(epoch, epoch_time,
-                  epoch_time * (n_epochs - epoch),
-                  epoch_ae_loss_avg.result(),
-                  epoch_dc_loss_avg.result(),
-                  epoch_dc_acc_avg.result(),
-                  epoch_gen_loss_avg.result()))
-
-    if epoch % 100 == 0:
-        # Latent space of test set
-        x_val_encoded = encoder(x_val, training=False)
-        label_list = list(y_val)
-
-        fig = plt.figure()
-        classes = set(label_list)
-        colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
-        kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
-        ax = plt.subplot(111, aspect='equal')
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
-                   for i, class_ in enumerate(classes)]
-        ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
-        plt.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], s=2, **kwargs)
-        ax.set_xlim([-3, 3])
-        ax.set_ylim([-3, 3])
-
-        plt.savefig(latent_space_dir / ('validation_epoch_%d.png' % epoch))
-        plt.close('all')
+plt.savefig(latent_space_dir / 'validation_latentspace.png')
+plt.close('all')
