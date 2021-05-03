@@ -160,8 +160,8 @@ def train_step(batch_x):
         # Creating the Cat-Distribution for the labels
         # Create random num: batch_size labels between 0 and 9
         # For semi supervised it should be 11 classes -> the new one is for unknown datapoitns
-        real_label_distribution = np.random.randint(low=0, high=10, size=batch_size)
-        real_label_distribution = np.eye(10)[real_label_distribution]
+        real_label_distribution = np.random.randint(low=0, high=n_labels, size=batch_size)
+        real_label_distribution = np.eye(n_labels)[real_label_distribution]
         real_z_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
 
         # genereated labels from the encoder/generator
