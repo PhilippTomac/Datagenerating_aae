@@ -202,7 +202,7 @@ for epoch in range(n_epochs + 1):
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
 
-        ae_loss, dc_loss, dc_acc, gen_loss, encoder, decoder, discriminator = train_step(batch_x)
+        ae_loss, dc_loss, dc_acc, gen_loss = train_step(batch_x)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)
@@ -248,37 +248,36 @@ for epoch in range(n_epochs + 1):
 # VALIDATION
 @tf.function
 @logger.catch
-def validation(batch_x, encoder_val, decoder_val, discriminator_val):
+def validation_step(batch_x):
     # Autoencoder
-    encoder_output = encoder_val(batch_x, training=False)
-    decoder_output = decoder_val(encoder_output, training=False)
+    encoder_output = encoder(batch_x, training=False)
+    decoder_output = decoder(encoder_output, training=False)
 
     # Autoencoder loss
     ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     # Discriminator
     real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
-    encoder_output = encoder_val(batch_x, training=False)
+    encoder_output = encoder(batch_x, training=False)
 
-    dc_real = discriminator_val(real_distribution, training=False)
-    dc_fake = discriminator_val(encoder_output, training=False)
+    dc_real = discriminator(real_distribution, training=False)
+    dc_fake = discriminator(encoder_output, training=False)
 
     # Discriminator Loss
     dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
 
     # Discriminator Acc
     dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
-                          tf.concat([dc_real, dc_fake], axis=0))
+                      tf.concat([dc_real, dc_fake], axis=0))
 
     # Generator (Encoder)
-    encoder_output = encoder_val(batch_x, training=False)
-    dc_fake = discriminator_val(encoder_output, training=False)
+    encoder_output = encoder(batch_x, training=False)
+    dc_fake = discriminator(encoder_output, training=False)
 
     # Generator loss
     gen_loss = generator_loss(dc_fake, gen_loss_weight)
 
     return ae_loss, dc_loss, dc_acc, gen_loss
-
 
 # Start the training
 for epoch in range(n_epochs + 1):
@@ -290,11 +289,7 @@ for epoch in range(n_epochs + 1):
     epoch_gen_loss_avg = tf.metrics.Mean()
 
     for batch, (batch_x) in enumerate(val_dataset):
-        # -------------------------------------------------------------------------------------------------------------
-        ae_loss, dc_loss, dc_acc, gen_loss = validation(batch_x,
-                                                        encoder=encoder,
-                                                        decoder=decoder,
-                                                        discriminator=discriminator)
+        ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x)
 
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)

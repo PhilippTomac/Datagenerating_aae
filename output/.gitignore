@@ -1,2 +1,4 @@
 # ignore the Output-Data
-/output/
+/output/unsupervisied_aae/
+/output/supervised_aae
+/output/mnist_analysis
