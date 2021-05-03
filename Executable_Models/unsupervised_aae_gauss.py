@@ -8,6 +8,8 @@ from lib import models
 import time
 from pathlib import Path
 
+from lib.DataHandler import MNIST
+
 '''
 Gauss unsupervised AAE: Here we assume that q(z|x) is a Gaussian distribution whose mean and variance is predicted 
 by the encoder network: zi ∼ N(µi(x), σi(x)). In this case, the stochasticity in q(z) comes from both the 
@@ -36,21 +38,31 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae_guass'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'latent_space'
+latent_space_dir = experiment_dir / 'experiment_a4579'
 latent_space_dir.mkdir(exist_ok=True)
 
 # load MNIST dataset
-# TODO: Datensatz MNIST aufbereiten fuer semi-supervised und in Datahandler Klasse auslagern
-# TODO: DataHandler Importieren und Szenaroen für Plots überlegen
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+print("Loading and Preprocessing Data with DataHandler.py")
+mnist = MNIST(random_state=random_seed)
 
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
+anomaly = [4, 5, 7, 9]
+drop = None
+include = list(range(0, 10))
 
-# Flatten the dataset
-x_train = x_train.reshape((-1, 28 * 28))
-x_test = x_test.reshape((-1, 28 * 28))
+# Traingins Data
+x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
+print(x_train.shape)
+print(y_train.shape)
 
+# Testdata
+x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+print(x_test.shape)
+print(y_test.shape)
+
+# Validation data
+x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+print(x_val.shape)
+print(y_val.shape)
 
 # Parameter
 batch_size = 256
@@ -59,7 +71,6 @@ train_buf = 60000
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
-
 
 # Creating the models
 aae = models.AAE()
@@ -71,9 +82,9 @@ encoder = aae.create_encoder_gauss()
 decoder = aae.create_decoder_gauss()
 discriminator = aae.create_discriminator_gauss()
 
-encoder.summary()
-decoder.summary()
-discriminator.summary()
+# encoder.summary()
+# decoder.summary()
+# discriminator.summary()
 
 # Define loss functions
 ae_loss_weight = 1.
@@ -98,6 +109,7 @@ def discriminator_loss(real_output, fake_output, loss_weight):
 def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
+
 # Define cyclic learning rate
 base_lr = 0.00025
 max_lr = 0.0025
@@ -112,6 +124,7 @@ global_step = 0
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
+
 
 @tf.function
 def train_step(batch_x):

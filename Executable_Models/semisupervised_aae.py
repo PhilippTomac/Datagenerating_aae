@@ -11,6 +11,8 @@ from pathlib import Path
 # -------------------------------------------------------------------------------------------------------------
 
 # Reduce the hunger of TF when we're training on a GPU
+from lib.DataHandler import MNIST
+
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
 except IndexError:
@@ -30,25 +32,37 @@ np.random.seed(random_seed)
 output_dir = ROOT_PATH / 'output'
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'semisupervised_aae_deterministic'
+experiment_dir = output_dir / 'semisupervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'latent_space'
+latent_space_dir = experiment_dir / 'experiment'
 latent_space_dir.mkdir(exist_ok=True)
+
+
 # -------------------------------------------------------------------------------------------------------------
+print("Loading and Preprocessing Data with DataHandler.py")
+# Data MNIST
+anomaly = [7]
+drop = [0, 2, 3, 4, 5, 6, 8, 9]
+include = [1, 7]
 
-# Data
-# TODO Wie mach ich das Ganze semi supervised?
-# Problem: Vorverarbeiten der Daten
-print("Loading data...")
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+print("Loading and Preprocessing Data with DataHandler.py")
+mnist = MNIST(random_state=random_seed)
+# Traingins Data
+x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
+print(x_train.shape)
+print(y_train.shape)
 
-x_train = x_train.astype('float32') / 255.
-x_test = x_test.astype('float32') / 255.
+# Testdata
+x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+print(x_test.shape)
+print(y_test.shape)
 
-# Flatten the dataset
-x_train = x_train.reshape((-1, 28 * 28))
-x_test = x_test.reshape((-1, 28 * 28))
+# Validation data
+x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+print(x_val.shape)
+print(y_val.shape)
+
 
 batch_size = 256
 train_buf = 60000
@@ -62,23 +76,18 @@ train_dataset = train_dataset.batch(batch_size)
 aae = models.AAE()
 # Parameter
 image_size = aae.image_size
-n_labels = aae.n_labels
 n_labeled = aae.n_labeled
 h_dim = aae.h_dim
 z_dim = aae.z_dim
 
+n_labels = 2
+
 encoder_ae = aae.create_encoder_semi(False)
 # hier Fehler: bzw Warning: Gradient cant be updated
 generator_y = aae.create_encoder_semi(True)
-decoder = aae.create_decoder_sup_semi()
-discriminator_labels = aae.create_discriminator_label()
+decoder = aae.create_decoder_sup_semi(n_labels)
+discriminator_labels = aae.create_discriminator_label(n_labels)
 discriminator_style = aae.create_discriminator_style()
-
-encoder_ae.summary()
-generator_y.summary()
-decoder.summary()
-discriminator_labels.summary()
-discriminator_style.summary()
 # -------------------------------------------------------------------------------------------------------------
 
 # Loss Function
@@ -119,15 +128,12 @@ ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
-n_epochs = 601
-
-
+n_epochs = 300
 # -------------------------------------------------------------------------------------------------------------
 
 
 # Training
 # Training of the semi supervsied aae
-# 1000 labeld data --> must b
 @tf.function
 # need data x and labels y
 def train_step(batch_x):
@@ -207,10 +213,10 @@ def train_step(batch_x):
         return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss
 
 
-for epoch in range(n_epochs):
+for epoch in range(n_epochs+1):
     start = time.time()
 
-    if epoch in [100, 300, 500]:
+    if epoch in [60, 120, 249]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2

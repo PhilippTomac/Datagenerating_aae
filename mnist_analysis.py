@@ -28,24 +28,8 @@ experiment_dir.mkdir(exist_ok=True)
 # x_test = x_test.reshape(10000, 784) / 255
 
 mnist = MNIST(random_state=1993)
-x_train = mnist.x_train
-y_train = mnist.y_train
-
-x_test = mnist.x_test
-y_test = mnist.y_test
-
-# mnist = MNIST(random_state=1993)
-# x_train, y_train = mnist.get_target_classifier_data('train', list(range(0, 9)), list(range(4, 7)))
-# print(x_train.shape)
-# print(y_train.shape)
-#
-# x_test, y_test = mnist.get_target_classifier_data('test', list(range(0, 9)), list(range(4, 7)))
-# print(x_test.shape)
-# print(y_test.shape)
-#
-# possible_digits = np.unique(y_train).tolist()
-# n_labels = len(possible_digits)
-# print(n_labels)
+x_train, y_train = mnist.get_supervised_data('train', None, list(range(0, 10)))
+x_test, y_test = mnist.get_supervised_data('test', None, list(range(0, 10)))
 
 print('Number of Datapoints of each label in the training Datasplit:')
 print(np.unique(y_train, return_counts=True))

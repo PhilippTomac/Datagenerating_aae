@@ -1,24 +1,4 @@
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-import matplotlib.patches as mpatches
-import numpy as np
 import tensorflow as tf
-
-# Keras Imports
-from keras.datasets import mnist
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Encoder
-from tensorflow.python.keras.applications.densenet import layers
 
 
 class AAE:
@@ -27,7 +7,7 @@ class AAE:
         self.image_size = 784
         self.h_dim = 1000
         self.z_dim = 2
-        self.n_labels = 7
+        self.labels = 2
         self.n_labeled = 1000
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -47,7 +27,7 @@ class AAE:
 
     def create_encoder_semi(self, supervised=False):
         # Input is the Data x (image)
-        inputs = tf.keras.Input(shape=(self.image_size,))
+        inputs = tf.keras.Input(shape=(self.image_size))
         x = tf.keras.layers.Dense(self.h_dim)(inputs)
         x = tf.keras.layers.LeakyReLU()(x)
         x = tf.keras.layers.Dropout(0.5)(x)
@@ -59,10 +39,10 @@ class AAE:
         encoded = tf.keras.layers.Dense(self.z_dim)(x)
         # Output of the labels with a softmax Cat(y)
         if supervised is False:
-            encoded_labels = tf.keras.layers.Dense(self.n_labels, activation='softmax')(x)
+            encoded_labels = tf.keras.layers.Dense(self.labels, activation='softmax')(x)
         else:
             # Needed for training of the encoder
-            encoded_labels = tf.keras.layers.Dense(self.n_labels)(x)
+            encoded_labels = tf.keras.layers.Dense(self.labels)(x)
 
         model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels], name='Encoder')
         return model
@@ -114,8 +94,8 @@ class AAE:
         model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
         return model
 
-    def create_decoder_sup_semi(self):
-        encoded = tf.keras.Input(shape=(self.z_dim + self.n_labels,))
+    def create_decoder_sup_semi(self, n_labels):
+        encoded = tf.keras.Input(shape=(self.z_dim + n_labels,))
         x = tf.keras.layers.Dense(self.h_dim)(encoded)
         x = tf.keras.layers.LeakyReLU()(x)
         x = tf.keras.layers.Dropout(0.5)(x)
@@ -152,8 +132,8 @@ class AAE:
         model = tf.keras.Model(inputs=encoded, outputs=prediction, name='disc_style')
         return model
 
-    def create_discriminator_label(self):
-        encoded = tf.keras.Input(shape=(self.n_labels,))
+    def create_discriminator_label(self, n_labels):
+        encoded = tf.keras.Input(shape=(n_labels,))
         x = tf.keras.layers.Dense(self.h_dim)(encoded)
         x = tf.keras.layers.LeakyReLU()(x)
         x = tf.keras.layers.Dropout(0.5)(x)
@@ -179,4 +159,3 @@ class AAE:
 
 # ----------------------------------------------------------------------------------------------------------------------
 # models for basic
-
