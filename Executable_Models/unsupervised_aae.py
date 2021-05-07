@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
+from matplotlib import gridspec
+
 from lib import models
 
 import time
@@ -37,16 +39,19 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'val_cpu_experiment_a7n2'
+latent_space_dir = experiment_dir / 'test9'
 latent_space_dir.mkdir(exist_ok=True)
+
+sampling_dir = latent_space_dir / 'Sampling'
+sampling_dir.mkdir(exist_ok=True)
 
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [7]
-drop = [0, 1, 3, 4, 5, 6, 8, 9]
-include = [2, 7]
+anomaly = [6, 7]
+drop = [8, 9]
+include = [0, 1, 2, 3, 4, 5, 6, 7]
 
 # Traingins Data
 x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
@@ -54,12 +59,12 @@ print(x_train.shape)
 print(y_train.shape)
 
 # Testdata
-x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+x_test, y_test = mnist.get_semisupervised_data('train', [6, 7, 8, 9], None, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 print(x_test.shape)
 print(y_test.shape)
 
 # Validation data
-x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+x_val, y_val = mnist.get_semisupervised_data('val', [6, 7, 8, 9], None, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 print(x_val.shape)
 print(y_val.shape)
 
@@ -121,7 +126,7 @@ n_samples = x_train.shape[0]
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
 
-n_epochs = 300
+n_epochs = 501
 
 # Optimizier
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
@@ -176,10 +181,10 @@ def train_step(batch_x):
 
 
 # Start the training
-for epoch in range(n_epochs + 1):
+for epoch in range(n_epochs):
     start = time.time()
 
-    if epoch in [60, 120, 240]:
+    if epoch in [60, 120, 240, 360]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2
@@ -216,13 +221,14 @@ for epoch in range(n_epochs + 1):
                   epoch_dc_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
-    if epoch % 100 == 0:
+    if epoch % 20 == 0:
         # Latent space of test set
         x_test_encoded = encoder(x_test, training=False)
         label_list = list(y_test)
 
         fig = plt.figure()
-        classes = set(label_list)
+       # classes = set(label_list)
+        classes = ['Anom', 'Normal']
         colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
         kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
         ax = plt.subplot(111, aspect='equal')
@@ -238,78 +244,40 @@ for epoch in range(n_epochs + 1):
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
 
+        # Samling the data
+        # Code from Alireza Makhzani - AAE
+        x_points = np.linspace(-3, 3, 20).astype(np.float32)
+        y_points = np.linspace(-3, 3, 20).astype(np.float32)
+
+        nx, ny = len(x_points), len(y_points)
+        plt.subplot()
+        gs = gridspec.GridSpec(nx, ny, hspace=0.05, wspace=0.05)
+
+        for i, g in enumerate(gs):
+            z = np.concatenate(([x_points[int(i / ny)]], [y_points[int(i % nx)]]))
+            z = np.reshape(z, (1, 2))
+            x = decoder(z, training=False).numpy()
+            ax = plt.subplot(g)
+            img = np.array(x.tolist()).reshape(28, 28)
+            ax.imshow(img, cmap='gray')
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_aspect('auto')
+        plt.savefig(sampling_dir / ('epoch_%d.png' % epoch))
+        plt.close('all')
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------------------------------------
 # # VALIDATION
-# @tf.function
-# def validation_step(batch_x, encoder, decoder, discriminator):
-#     # Autoencoder
-#     encoder_output = encoder(batch_x, training=False)
-#     decoder_output = decoder(encoder_output, training=False)
-#
-#     # Autoencoder loss
-#     ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
-#
-#     # Discriminator
-#     real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
-#     encoder_output = encoder(batch_x, training=False)
-#
-#     dc_real = discriminator(real_distribution, training=False)
-#     dc_fake = discriminator(encoder_output, training=False)
-#
-#     # Discriminator Loss
-#     dc_loss = discriminator_loss(dc_real, dc_fake, dc_loss_weight)
-#
-#     # Discriminator Acc
-#     dc_acc = accuracy(tf.concat([tf.ones_like(dc_real), tf.zeros_like(dc_fake)], axis=0),
-#                       tf.concat([dc_real, dc_fake], axis=0))
-#
-#     # Generator (Encoder)
-#     encoder_output = encoder(batch_x, training=False)
-#     dc_fake = discriminator(encoder_output, training=False)
-#
-#     # Generator loss
-#     gen_loss = generator_loss(dc_fake, gen_loss_weight)
-#
-#     return ae_loss, dc_loss, dc_acc, gen_loss
-#
-# # Start the training
-# for epoch in range(n_epochs + 1):
-    # start = time.time()
-    #
-    # epoch_ae_loss_avg = tf.metrics.Mean()
-    # epoch_dc_loss_avg = tf.metrics.Mean()
-    # epoch_dc_acc_avg = tf.metrics.Mean()
-    # epoch_gen_loss_avg = tf.metrics.Mean()
-    #
-    # for batch, (batch_x) in enumerate(val_dataset):
-    #     ae_loss, dc_loss, dc_acc, gen_loss = validation_step(batch_x,
-    #                                                          encoder=encoder,
-    #                                                          decoder=decoder,
-    #                                                          discriminator=discriminator)
-    #
-    #     epoch_ae_loss_avg(ae_loss)
-    #     epoch_dc_loss_avg(dc_loss)
-    #     epoch_dc_acc_avg(dc_acc)
-    #     epoch_gen_loss_avg(gen_loss)
-    #
-    # epoch_time = time.time() - start
-    # print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
-    #       .format(epoch, epoch_time,
-    #               epoch_time * (n_epochs - epoch),
-    #               epoch_ae_loss_avg.result(),
-    #               epoch_dc_loss_avg.result(),
-    #               epoch_dc_acc_avg.result(),
-    #               epoch_gen_loss_avg.result()))
-# Latent space of test set
+# Latent space of validation set
 x_val_encoded = encoder(x_val, training=False)
 label_list = list(y_val)
 
 fig = plt.figure()
-classes = set(label_list)
+# classes = set(label_list)
+classes = ['Anom', 'Normal']
 colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
 kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
 ax = plt.subplot(111, aspect='equal')

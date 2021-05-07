@@ -16,28 +16,14 @@ Testing how to prepre the dataset
 # ----------------------------------------------------------------------------------------------------------------------
 print('Process Data with DataHandler')
 mnist = MNIST(random_state=1993)
-normal = [0, 1, 2, 3, 5, 6, 7]
-anomaly = [4, 9]
-include = [8]
+anomaly = [4]
+drop = [0, 1, 3, 5, 6, 7, 8, 9]
+include = [2, 4]
 
 
-x_train_a, y_train_a = mnist.get_semisupervised_data('train', [4, 9], [5, 6, 7, 8], [0, 1, 2, 3, 4, 9])
-x_train_unk, y_train_unk = mnist.get_data_unsupervised('train', None, [5, 6, 7, 8])
-print(x_train_a.shape)
-print(y_train_a.shape)
-
-print(x_train_unk.shape)
-print(y_train_unk.shape)
-
-x_train = np.concatenate([x_train_a, x_train_unk], axis=0)
-y_train = y_train_a
-
-possible_digits = np.unique(y_train).tolist()
-possible_digits = possible_digits
-n_samples = len(y_train)
-print(possible_digits)
-print(n_samples)
-
+x_train, y_train = mnist.get_anomdata_nolabels('train', anomaly, drop, include)
+print(x_train.shape)
+print(y_train.shape)
 
 
 

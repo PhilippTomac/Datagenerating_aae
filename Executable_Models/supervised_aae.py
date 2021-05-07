@@ -340,8 +340,8 @@ for epoch in range(n_epochs + 1):
         ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45),
                   fancybox=True, loc='center left')
         plt.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], s=2, **kwargs)
-        ax.set_xlim([-3, 3])
-        ax.set_ylim([-3, 3])
+        ax.set_xlim([-10, 10])
+        ax.set_ylim([-10, 10])
 
         plt.savefig(latent_space_dir / ('validation_epoch_%d.png' % epoch))
         plt.close('all')

@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
+from matplotlib import gridspec
+
 from lib import models, DataHandler
 
 import time
@@ -35,37 +37,40 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'semisupervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'experiment'
+latent_space_dir = experiment_dir / 'ref3'
 latent_space_dir.mkdir(exist_ok=True)
+
+sampling_dir = latent_space_dir / 'Sampling'
+sampling_dir.mkdir(exist_ok=True)
 
 
 # -------------------------------------------------------------------------------------------------------------
-print("Loading and Preprocessing Data with DataHandler.py")
 # Data MNIST
-anomaly = [7]
-drop = [0, 2, 3, 4, 5, 6, 8, 9]
-include = [1, 7]
-
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
+
+anomaly = None
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [1]
+
 # Traingins Data
 x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
 print(x_train.shape)
 print(y_train.shape)
 
 # Testdata
-x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+x_test, y_test = mnist.get_semisupervised_data('train', [9], drop, [1, 9])
 print(x_test.shape)
 print(y_test.shape)
 
 # Validation data
-x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+x_val, y_val = mnist.get_semisupervised_data('val', [9], drop, [1, 9])
 print(x_val.shape)
 print(y_val.shape)
 
 
 batch_size = 256
-train_buf = 60000
+train_buf = x_train.shape[0]
 
 train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
@@ -119,7 +124,7 @@ def generator_loss(fake_output, loss_weight):
 base_lr = 0.00025
 max_lr = 0.0025
 
-n_samples = 60000
+n_samples = x_train.shape[0]
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
 
@@ -128,7 +133,7 @@ ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
-n_epochs = 300
+n_epochs = 501
 # -------------------------------------------------------------------------------------------------------------
 
 
@@ -213,10 +218,10 @@ def train_step(batch_x):
         return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss
 
 
-for epoch in range(n_epochs+1):
+for epoch in range(n_epochs):
     start = time.time()
 
-    if epoch in [60, 120, 249]:
+    if epoch in [60, 120, 240, 360]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2
@@ -263,13 +268,14 @@ for epoch in range(n_epochs+1):
                   epoch_dc_z_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
-    if epoch % 100 == 0:
+    if epoch % 20 == 0:
         # Latent space of test set
         x_test_encoded, _ = encoder_ae(x_test, training=False)
         label_list = list(y_test)
 
         fig = plt.figure()
-        classes = set(label_list)
+        # classes = set(label_list)
+        classes = ['Anom', 'Normal']
         colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
         kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
         ax = plt.subplot(111, aspect='equal')
@@ -279,8 +285,36 @@ for epoch in range(n_epochs+1):
                    for i, class_ in enumerate(classes)]
         ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
         plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], s=2, **kwargs)
-        ax.set_xlim([-3, 3])
-        ax.set_ylim([-3, 3])
+        ax.set_xlim([-10, 10])
+        ax.set_ylim([-10, 10])
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
+# # VALIDATION
+# Latent space of validation set
+x_val_encoded, _ = encoder_ae(x_val, training=False)
+label_list = list(y_val)
+
+fig = plt.figure()
+# classes = set(label_list)
+classes = ['Anom', 'Normal']
+colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
+kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
+ax = plt.subplot(111, aspect='equal')
+box = ax.get_position()
+ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
+           for i, class_ in enumerate(classes)]
+ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
+plt.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], s=2, **kwargs)
+ax.set_xlim([-10, 10])
+ax.set_ylim([-10, 10])
+
+plt.savefig(latent_space_dir / 'validation_latentspace.png')
+plt.close('all')
+
+
