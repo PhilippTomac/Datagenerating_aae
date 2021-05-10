@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
-from matplotlib import gridspec
+import cv2
+from matplotlib import gridspec, colors
+from PIL import Image
 
 from lib import models, DataHandler
 
@@ -40,18 +42,16 @@ experiment_dir.mkdir(exist_ok=True)
 latent_space_dir = experiment_dir / 'ref3'
 latent_space_dir.mkdir(exist_ok=True)
 
-sampling_dir = latent_space_dir / 'Sampling'
-sampling_dir.mkdir(exist_ok=True)
-
 
 # -------------------------------------------------------------------------------------------------------------
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = None
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [1]
+anomaly = [9]
+delete_labels = [9]
+drop = [0, 2, 3, 4, 5, 6, 7, 8]
+include = [1, 9]
 
 # Traingins Data
 x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
@@ -59,12 +59,12 @@ print(x_train.shape)
 print(y_train.shape)
 
 # Testdata
-x_test, y_test = mnist.get_semisupervised_data('train', [9], drop, [1, 9])
+x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
 print(x_test.shape)
 print(y_test.shape)
 
 # Validation data
-x_val, y_val = mnist.get_semisupervised_data('val', [9], drop, [1, 9])
+x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
 print(x_val.shape)
 print(y_val.shape)
 
@@ -270,51 +270,51 @@ for epoch in range(n_epochs):
 
     if epoch % 20 == 0:
         # Latent space of test set
-        x_test_encoded, _ = encoder_ae(x_test, training=False)
+        x_test_encoded, x_test_encoded_l = encoder_ae(x_test, training=False)
         label_list = list(y_test)
 
-        fig = plt.figure()
-        # classes = set(label_list)
-        classes = ['Anom', 'Normal']
-        colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
-        kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
-        ax = plt.subplot(111, aspect='equal')
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
-                   for i, class_ in enumerate(classes)]
-        ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
-        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], s=2, **kwargs)
-        ax.set_xlim([-10, 10])
-        ax.set_ylim([-10, 10])
+        cmap = colors.ListedColormap(['blue', 'red'])
+        bounds = [0, 5, 10]
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+
+        fig, ax = plt.subplots()
+        scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                    alpha=.4, s=2, cmap=cmap)
+
+        legend1 = ax.legend(*scatter.legend_elements(),
+                            loc="lower left", title="Classes")
+        ax.add_artist(legend1)
+        # ax.set_xlim([-30, 30])
+        # ax.set_ylim([-30, 30])
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
-# ---------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------------------------------------
-# # VALIDATION
-# Latent space of validation set
-x_val_encoded, _ = encoder_ae(x_val, training=False)
-label_list = list(y_val)
 
-fig = plt.figure()
-# classes = set(label_list)
-classes = ['Anom', 'Normal']
-colormap = plt.cm.rainbow(np.linspace(0, 1, len(classes)))
-kwargs = {'alpha': 0.8, 'c': [colormap[i] for i in label_list]}
-ax = plt.subplot(111, aspect='equal')
-box = ax.get_position()
-ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-handles = [mpatches.Circle((0, 0), label=class_, color=colormap[i])
-           for i, class_ in enumerate(classes)]
-ax.legend(handles=handles, shadow=True, bbox_to_anchor=(1.05, 0.45), fancybox=True, loc='center left')
-plt.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], s=2, **kwargs)
-ax.set_xlim([-10, 10])
-ax.set_ylim([-10, 10])
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # # VALIDATION
+        # Latent space of validation set
+        if epoch == n_epochs:
+            # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+            x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
+            label_list = list(y_val)
 
-plt.savefig(latent_space_dir / 'validation_latentspace.png')
-plt.close('all')
+            cmap = colors.ListedColormap(['blue', 'red'])
+            bounds = [0, 5, 10]
+            norm = colors.BoundaryNorm(bounds, cmap.N)
+
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                                 alpha=.4, s=2, cmap=cmap)
+
+            legend1 = ax.legend(*scatter.legend_elements(),
+                                loc="lower left", title="Classes")
+            ax.add_artist(legend1)
+
+            plt.savefig(latent_space_dir / 'validation_latentspace.png')
+            plt.close('all')
+
 
 
