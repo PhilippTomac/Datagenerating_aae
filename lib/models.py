@@ -94,8 +94,8 @@ class AAE:
         model = tf.keras.Model(inputs=encoded, outputs=reconstruction)
         return model
 
-    def create_decoder_sup_semi(self, n_labels):
-        encoded = tf.keras.Input(shape=(self.z_dim + n_labels,))
+    def create_decoder_sup_semi(self):
+        encoded = tf.keras.Input(shape=(self.z_dim + self.labels,))
         x = tf.keras.layers.Dense(self.h_dim)(encoded)
         x = tf.keras.layers.LeakyReLU()(x)
         x = tf.keras.layers.Dropout(0.5)(x)

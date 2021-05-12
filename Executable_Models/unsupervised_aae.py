@@ -33,7 +33,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'ref_2_test'
+latent_space_dir = experiment_dir / 'test8'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
@@ -43,20 +43,21 @@ sampling_dir.mkdir(exist_ok=True)
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [4]
-delete_labels = [8, 9]
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [2, 4]
+anomaly = [6, 7, 8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-
+# Traingins Data
 x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
 print(x_train.shape)
 print(y_train.shape)
 
+# Testdata
 x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
 print(x_test.shape)
 print(y_test.shape)
 
+# Validation data
 x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
 print(x_val.shape)
 print(y_val.shape)
@@ -229,10 +230,16 @@ for epoch in range(n_epochs):
         legend1 = ax.legend(*scatter.legend_elements(),
                             loc="lower left", title="Classes")
         ax.add_artist(legend1)
+        # ax.set_xlim([-30, 30])
+        # ax.set_ylim([-30, 30])
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
 
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
         # Samling the data
         # Code from Alireza Makhzani - AAE
         x_points = np.linspace(-3, 3, 20).astype(np.float32)
@@ -261,25 +268,25 @@ for epoch in range(n_epochs):
         # ---------------------------------------------------------------------------------------------------------------------
         # # VALIDATION
         # Latent space of validation set
-    if epoch == n_epochs:
-        # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-        x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
-        label_list = list(y_val)
+        if epoch == n_epochs - 1:
+            # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+            x_val_encoded = encoder(x_val, training=False)
+            label_list = list(y_val)
 
-        cmap = colors.ListedColormap(['blue', 'red'])
-        bounds = [0, 5, 10]
-        norm = colors.BoundaryNorm(bounds, cmap.N)
+            cmap = colors.ListedColormap(['blue', 'red'])
+            bounds = [0, 5, 10]
+            norm = colors.BoundaryNorm(bounds, cmap.N)
 
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
-                             alpha=.4, s=2, cmap=cmap)
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                                 alpha=.4, s=2, cmap=cmap)
 
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="Classes")
-        ax.add_artist(legend1)
+            legend1 = ax.legend(*scatter.legend_elements(),
+                                loc="lower left", title="Classes")
+            ax.add_artist(legend1)
 
-        plt.savefig(latent_space_dir / 'validation_latentspace.png')
-        plt.close('all')
+            plt.savefig(latent_space_dir / 'validation_latentspace.png')
+            plt.close('all')
 
 
 

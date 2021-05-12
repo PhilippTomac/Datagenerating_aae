@@ -39,19 +39,20 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'semisupervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'ref3'
+latent_space_dir = experiment_dir / 'test_vis'
 latent_space_dir.mkdir(exist_ok=True)
 
+style_dir = latent_space_dir / 'Style'
+style_dir.mkdir(exist_ok=True)
 
 # -------------------------------------------------------------------------------------------------------------
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [9]
-delete_labels = [9]
-drop = [0, 2, 3, 4, 5, 6, 7, 8]
-include = [1, 9]
+anomaly = []
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [3]
 
 # Traingins Data
 x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
@@ -87,12 +88,31 @@ z_dim = aae.z_dim
 
 n_labels = 2
 
-encoder_ae = aae.create_encoder_semi(False)
+encoder_ae = aae.create_encoder_semi(True)
 # hier Fehler: bzw Warning: Gradient cant be updated
-generator_y = aae.create_encoder_semi(True)
-decoder = aae.create_decoder_sup_semi(n_labels)
+generator_y = aae.create_encoder_semi(False)
+decoder = aae.create_decoder_sup_semi()
 discriminator_labels = aae.create_discriminator_label(n_labels)
 discriminator_style = aae.create_discriminator_style()
+
+# Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
+label_list = list(y_val)
+
+cmap = colors.ListedColormap(['blue', 'red'])
+bounds = [0, 5, 10]
+norm = colors.BoundaryNorm(bounds, cmap.N)
+
+fig, ax = plt.subplots()
+scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list, alpha=.4, s=2, cmap=cmap)
+
+legend1 = ax.legend(*scatter.legend_elements(),
+                    loc="lower left", title="Classes")
+ax.add_artist(legend1)
+
+plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
+plt.close('all')
+
 # -------------------------------------------------------------------------------------------------------------
 
 # Loss Function
@@ -143,7 +163,7 @@ n_epochs = 501
 # need data x and labels y
 def train_step(batch_x):
     with tf.GradientTape() as ae_tape:
-        encoder_z, encoder_y = encoder_ae(batch_x, training=True)
+        encoder_z, encoder_y = encoder_ae(batch_x, supervised=False, training=True)
         decoder_input = tf.concat([encoder_z, encoder_y], axis=1)
         decoder_output = decoder(decoder_input)
 
@@ -164,7 +184,6 @@ def train_step(batch_x):
         # Discriminator for the labels
         # Creating the Cat-Distribution for the labels
         # Create random num: batch_size labels between 0 and 9
-        # For semi supervised it should be 11 classes -> the new one is for unknown datapoitns
         real_label_distribution = np.random.randint(low=0, high=n_labels, size=batch_size)
         real_label_distribution = np.eye(n_labels)[real_label_distribution]
         real_z_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
@@ -201,7 +220,7 @@ def train_step(batch_x):
         # So Generator must be trained for z and y
         #       --> gen_y_loss and gen_z_loss
         with tf.GradientTape() as gen_tape:
-            encoder_z, encoder_y = generator_y(batch_x, training=True)
+            encoder_z, encoder_y = generator_y(batch_x, supervised=True, training=True)
             dc_y_fake = discriminator_labels(encoder_y, training=True)
             dc_z_fake = discriminator_style(encoder_z, training=True)
 
@@ -257,10 +276,9 @@ for epoch in range(n_epochs):
         epoch_gen_loss_avg(gen_loss)
 
     epoch_time = time.time() - start
-    print('{:4d}: TIME: {:.2f} ETA: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
+    print('{:4d}: TIME: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
           'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f}' \
           .format(epoch, epoch_time,
-                  epoch_time * (n_epochs - epoch),
                   epoch_ae_loss_avg.result(),
                   epoch_dc_y_loss_avg.result(),
                   epoch_dc_y_acc_avg.result(),
@@ -281,11 +299,11 @@ for epoch in range(n_epochs):
         scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
                     alpha=.4, s=2, cmap=cmap)
 
+
         legend1 = ax.legend(*scatter.legend_elements(),
                             loc="lower left", title="Classes")
         ax.add_artist(legend1)
-        # ax.set_xlim([-30, 30])
-        # ax.set_ylim([-30, 30])
+
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
@@ -294,9 +312,37 @@ for epoch in range(n_epochs):
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
+        # Sampling
+        nx, ny = 10, 10
+        random_inputs = np.random.randn(2, z_dim)
+        sample_y = np.identity(2)
+        plt.subplot()
+        gs = gridspec.GridSpec(nx, ny, hspace=0.05, wspace=0.05)
+        i = 0
+        for r in random_inputs:
+            for t in sample_y:
+                r = np.reshape(r, (1, z_dim))
+                t = np.reshape(t, (1, n_labels))
+                dec_input = np.concatenate((r, t), 1)
+                x = decoder(dec_input.astype('float32'), training=False).numpy()
+                ax = plt.subplot(gs[i])
+                i += 1
+                img = np.array(x.tolist()).reshape(28, 28)
+                ax.imshow(img, cmap='gray')
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.set_aspect('auto')
+
+        plt.savefig(style_dir / ('epoch_%d.png' % epoch))
+        plt.close()
+
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------------------------------------------------
         # # VALIDATION
         # Latent space of validation set
-        if epoch == n_epochs:
+        if epoch == n_epochs - 1:
             # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
             x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
             label_list = list(y_val)
@@ -306,7 +352,7 @@ for epoch in range(n_epochs):
             norm = colors.BoundaryNorm(bounds, cmap.N)
 
             fig, ax = plt.subplots()
-            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+            scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
                                  alpha=.4, s=2, cmap=cmap)
 
             legend1 = ax.legend(*scatter.legend_elements(),

@@ -3,6 +3,8 @@ import tensorflow as tf
 import numpy as np
 
 # from lib.DataHandler import MNIST
+from numpy import newaxis
+
 from lib.DataHandler import MNIST
 
 
@@ -20,20 +22,26 @@ mnist = MNIST(random_state=1993)
 
 anomaly = [4]
 delete_labels = [9]
-drop = [0, 2, 3, 5, 6, 7, 8]
-include = [1, 4, 9]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [4, 9]
 
 # Traingins Data
-x_train, y_train = mnist.get_experiment_data('train', anomaly, drop, include, delete_labels)
+x_train, y_train = mnist.get_supervised_data('train', drop, include)
 print(x_train.shape)
 print(y_train.shape)
 
-# Testdata
-x_test, y_test = mnist.get_experiment_data('test', anomaly, drop, include, delete_labels)
-print(x_test.shape)
-print(y_test.shape)
+new_x = x_train[:, :, np.newaxis]
+print(new_x.shape)
+label = list(y_train)
+print(len(label))
 
-# Validation data
-x_val, y_val = mnist.get_experiment_data('val', anomaly, drop, include, delete_labels)
-print(x_val.shape)
-print(y_val.shape)
+for i in range(len(label)):
+    new_x = np.array([x_train], [label[1]])
+
+print(new_x.shape)
+
+
+
+
+
+

@@ -222,7 +222,8 @@ class DataLabels:
         this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
 
         # delete labels
-        this_y = np.delete(this_y, np.where(np.isin(this_y, delete_labels)), axis=0)
+        # this_y = np.delete(this_y, np.where(np.isin(this_y, delete_labels)), axis=0)
+
 
         # Make othjer labels binary
         this_y[np.where(~np.isin(this_y, anomaly_classes))] = -1
@@ -230,6 +231,7 @@ class DataLabels:
         this_y += 1
         # 1 = Anomaly, 0 = Normal
         this_y = this_y.astype("uint8")
+
 
         # If desired, reduce the number anomalous samples
         if n_anomaly_samples is not None:
