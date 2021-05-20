@@ -4,6 +4,7 @@ import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
 from matplotlib import gridspec, colors
+from matplotlib.cm import get_cmap
 
 from lib import models
 
@@ -33,7 +34,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test8'
+latent_space_dir = experiment_dir / 'test_13'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
@@ -43,24 +44,34 @@ sampling_dir.mkdir(exist_ok=True)
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [6, 7, 8, 9]
-drop = None
+anomaly = [1, 5]
+delete = [0, 2, 3, 4]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
+# ---------------------------------------------------------
 # Traingins Data
-x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
+print('Training Data...')
+x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include, delete)
 print(x_train.shape)
 print(y_train.shape)
+print(y_train_original.shape)
 
+# ---------------------------------------------------------
 # Testdata
-x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+print('Test Data...')
+x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete)
 print(x_test.shape)
 print(y_test.shape)
-
+print(y_test_original.shape)
+# ---------------------------------------------------------
 # Validation data
-x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+print('Validation Data...')
+x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete)
 print(x_val.shape)
 print(y_val.shape)
+print(y_val_original.shape)
+# ---------------------------------------------------------
 
 # Parameter
 batch_size = 256
@@ -87,6 +98,35 @@ discriminator = aae.create_discriminator_style()
 # encoder.summary()
 # decoder.summary()
 # discriminator.summary()
+
+# -------------------------------------------------------------------------------------------------------------
+# Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+multi_color = True
+
+x_val_encoded = encoder(x_val, training=False)
+label_list = list(y_val_original)
+
+if multi_color is True:
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                         alpha=.4, s=2, cmap="tab10")
+else:
+    cmap = colors.ListedColormap(['blue', 'red'])
+    bounds = [0, 5, 10]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                         alpha=0.8, s=2, cmap=cmap)
+
+legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+ax.add_artist(legend)
+
+plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
+plt.close('all')
+# -------------------------------------------------------------------------------------------------------------
+
+
 
 # loss functions
 ae_loss_weight = 1.
@@ -217,19 +257,24 @@ for epoch in range(n_epochs):
     if epoch % 20 == 0:
         # Latent space of test set
         x_test_encoded = encoder(x_test, training=False)
-        label_list = list(y_test)
+        label_list = list(y_test_original)
 
-        cmap = colors.ListedColormap(['blue', 'red'])
-        bounds = [0, 5, 10]
-        norm = colors.BoundaryNorm(bounds, cmap.N)
+        if multi_color is True:
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                                 alpha=.4, s=2, cmap="tab10")
+        else:
+            cmap = colors.ListedColormap(['blue', 'red'])
+            bounds = [0, 5, 10]
+            norm = colors.BoundaryNorm(bounds, cmap.N)
 
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
-                    alpha=.4, s=2, cmap=cmap)
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                                 alpha=.4, s=2, cmap=cmap)
 
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="Classes")
-        ax.add_artist(legend1)
+        legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+        ax.add_artist(legend)
+
         # ax.set_xlim([-30, 30])
         # ax.set_ylim([-30, 30])
 
@@ -270,20 +315,25 @@ for epoch in range(n_epochs):
         # Latent space of validation set
         if epoch == n_epochs - 1:
             # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+            # Latent space of test set
             x_val_encoded = encoder(x_val, training=False)
-            label_list = list(y_val)
+            label_list = list(y_val_original)
 
-            cmap = colors.ListedColormap(['blue', 'red'])
-            bounds = [0, 5, 10]
-            norm = colors.BoundaryNorm(bounds, cmap.N)
+            if multi_color is True:
+                fig, ax = plt.subplots()
+                scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                                     alpha=0.8, s=2, cmap="tab10")
+            else:
+                cmap = colors.ListedColormap(['blue', 'red'])
+                bounds = [0, 5, 10]
+                norm = colors.BoundaryNorm(bounds, cmap.N)
 
-            fig, ax = plt.subplots()
-            scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                                 alpha=.4, s=2, cmap=cmap)
+                fig, ax = plt.subplots()
+                scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                                     alpha=0.8, s=2, cmap=cmap)
 
-            legend1 = ax.legend(*scatter.legend_elements(),
-                                loc="lower left", title="Classes")
-            ax.add_artist(legend1)
+            legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+            ax.add_artist(legend)
 
             plt.savefig(latent_space_dir / 'validation_latentspace.png')
             plt.close('all')
