@@ -263,7 +263,7 @@ def validation_step(batch_x, batch_y):
     # Autoencoder
 
     encoder_output = encoder(batch_x, training=False)
-    decoder_output = decoder(tf.concat([encoder_output, tf.one_hot(batch_y, n_labels)], axis=1), training=False)
+    decoder_output = decoder(tf.concat([encoder_output, tf.one_hot([batch_y], n_labels)], axis=1), training=False)
 
     # Autoencoder loss
     ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
