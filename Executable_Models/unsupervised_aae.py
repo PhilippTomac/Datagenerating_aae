@@ -34,20 +34,23 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_13'
+latent_space_dir = experiment_dir / 'test_5'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
 sampling_dir.mkdir(exist_ok=True)
 
+multi_color = False
+
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [1, 5]
-delete = [0, 2, 3, 4]
+anomaly = [8]
+delete = [8]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [3, 8]
+
 
 # ---------------------------------------------------------
 # Traingins Data
@@ -101,15 +104,13 @@ discriminator = aae.create_discriminator_style()
 
 # -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-multi_color = True
-
 x_val_encoded = encoder(x_val, training=False)
 label_list = list(y_val_original)
 
 if multi_color is True:
     fig, ax = plt.subplots()
     scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                         alpha=.4, s=2, cmap="tab10")
+                         alpha=.9, s=2, cmap="tab10")
 else:
     cmap = colors.ListedColormap(['blue', 'red'])
     bounds = [0, 5, 10]
@@ -117,7 +118,7 @@ else:
 
     fig, ax = plt.subplots()
     scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                         alpha=0.8, s=2, cmap=cmap)
+                         alpha=0.9, s=2, cmap=cmap)
 
 legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
 ax.add_artist(legend)
@@ -262,7 +263,7 @@ for epoch in range(n_epochs):
         if multi_color is True:
             fig, ax = plt.subplots()
             scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
-                                 alpha=.4, s=2, cmap="tab10")
+                                 alpha=.9, s=2, cmap="tab10")
         else:
             cmap = colors.ListedColormap(['blue', 'red'])
             bounds = [0, 5, 10]
@@ -270,7 +271,7 @@ for epoch in range(n_epochs):
 
             fig, ax = plt.subplots()
             scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
-                                 alpha=.4, s=2, cmap=cmap)
+                                 alpha=.9, s=2, cmap=cmap)
 
         legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
         ax.add_artist(legend)
@@ -322,7 +323,7 @@ for epoch in range(n_epochs):
             if multi_color is True:
                 fig, ax = plt.subplots()
                 scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                                     alpha=0.8, s=2, cmap="tab10")
+                                     alpha=0.9, s=2, cmap="tab10")
             else:
                 cmap = colors.ListedColormap(['blue', 'red'])
                 bounds = [0, 5, 10]
@@ -330,7 +331,7 @@ for epoch in range(n_epochs):
 
                 fig, ax = plt.subplots()
                 scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                                     alpha=0.8, s=2, cmap=cmap)
+                                     alpha=0.9, s=2, cmap=cmap)
 
             legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
             ax.add_artist(legend)
