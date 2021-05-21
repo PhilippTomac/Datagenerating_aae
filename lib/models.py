@@ -25,7 +25,7 @@ class AAE:
         model = tf.keras.Model(inputs=inputs, outputs=encoded)
         return model
 
-    def create_encoder_semi(self, supervised=False):
+    def create_encoder_semi(self):
         # Input is the Data x (image)
         inputs = tf.keras.Input(shape=(self.image_size))
         x = tf.keras.layers.Dense(self.h_dim)(inputs)
@@ -36,15 +36,13 @@ class AAE:
         x = tf.keras.layers.Dropout(0.5)(x)
         # 2 Outputs
         # Output Style variable z for reconstruction of the input
-        encoded = tf.keras.layers.Dense(self.z_dim)(x)
+        encoded = tf.keras.layers.Dense(self.z_dim, name='outputz')(x)
         # Output of the labels with a softmax Cat(y)
-        if supervised is False:
-            encoded_labels = tf.keras.layers.Dense(self.labels, activation='softmax')(x)
-        else:
-            # Needed for training of the encoder
-            encoded_labels = tf.keras.layers.Dense(self.labels)(x)
+        encoded_labels_softmax = tf.keras.layers.Dense(self.labels, activation=tf.nn.softmax, name='softmaxlayer')(x)
+        # Needed for training of the encoder
+        encoded_labels = tf.keras.layers.Dense(self.labels, name='outputlabel')(x)
 
-        model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels], name='Encoder')
+        model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels, encoded_labels_softmax], name='Encoder')
         return model
 
     def create_encoder_cnn(self):
