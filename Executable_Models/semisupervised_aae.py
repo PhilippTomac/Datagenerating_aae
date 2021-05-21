@@ -6,6 +6,7 @@ import tensorflow as tf
 import cv2
 from matplotlib import gridspec, colors
 from PIL import Image
+from matplotlib.cm import get_cmap
 
 from lib import models, DataHandler
 
@@ -39,41 +40,48 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'semisupervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_vis'
+latent_space_dir = experiment_dir / 'ref_4'
 latent_space_dir.mkdir(exist_ok=True)
 
-style_dir = latent_space_dir / 'Style'
-style_dir.mkdir(exist_ok=True)
+MULTI_COLOR = True
 
 # -------------------------------------------------------------------------------------------------------------
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = []
+anomaly = None
+delete = [4]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [3]
-
+include = [2, 4]
+# ---------------------------------------------------------
 # Traingins Data
-x_train, y_train = mnist.get_semisupervised_data('train', anomaly, drop, include)
+print('Training Data...')
+x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include, delete)
 print(x_train.shape)
 print(y_train.shape)
+print(y_train_original.shape)
 
+# ---------------------------------------------------------
 # Testdata
-x_test, y_test = mnist.get_semisupervised_data('test', anomaly, drop, include)
+print('Test Data...')
+x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete)
 print(x_test.shape)
 print(y_test.shape)
-
+print(y_test_original.shape)
+# ---------------------------------------------------------
 # Validation data
-x_val, y_val = mnist.get_semisupervised_data('val', anomaly, drop, include)
+print('Validation Data...')
+x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete)
 print(x_val.shape)
 print(y_val.shape)
-
+print(y_val_original.shape)
+# ---------------------------------------------------------
 
 batch_size = 256
 train_buf = x_train.shape[0]
 
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
+train_dataset = tf.data.Dataset.from_tensor_slices((x_train,y_train))
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
 # -------------------------------------------------------------------------------------------------------------
@@ -88,27 +96,33 @@ z_dim = aae.z_dim
 
 n_labels = 2
 
-encoder_ae = aae.create_encoder_semi(True)
-# hier Fehler: bzw Warning: Gradient cant be updated
-generator_y = aae.create_encoder_semi(False)
+encoder_ae = aae.create_encoder_semi()
 decoder = aae.create_decoder_sup_semi()
 discriminator_labels = aae.create_discriminator_label(n_labels)
 discriminator_style = aae.create_discriminator_style()
 
+
+# -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
-label_list = list(y_val)
 
-cmap = colors.ListedColormap(['blue', 'red'])
-bounds = [0, 5, 10]
-norm = colors.BoundaryNorm(bounds, cmap.N)
+x_val_encoded, _, _ = encoder_ae(x_val, training=False)
+label_list = list(y_val_original)
 
-fig, ax = plt.subplots()
-scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list, alpha=.4, s=2, cmap=cmap)
+if MULTI_COLOR is True:
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                         alpha=.9, s=2, cmap="tab10")
+else:
+    cmap = colors.ListedColormap(['blue', 'red'])
+    bounds = [0, 5, 10]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
 
-legend1 = ax.legend(*scatter.legend_elements(),
-                    loc="lower left", title="Classes")
-ax.add_artist(legend1)
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                         alpha=0.9, s=2, cmap=cmap)
+
+legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+ax.add_artist(legend)
 
 plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
 plt.close('all')
@@ -119,9 +133,11 @@ plt.close('all')
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
+label_loss_weight = 1.
 
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 mse = tf.keras.losses.MeanSquaredError()
+softmax = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 accuracy = tf.keras.metrics.BinaryAccuracy()
 
 
@@ -139,6 +155,10 @@ def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
 
+def label_loss(label_input, label_reconstruction, loss_weight):
+    return loss_weight * softmax(label_input, label_reconstruction)
+
+
 # -------------------------------------------------------------------------------------------------------------
 
 base_lr = 0.00025
@@ -152,18 +172,19 @@ global_step = 0
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
+label_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 n_epochs = 501
-# -------------------------------------------------------------------------------------------------------------
 
+# -------------------------------------------------------------------------------------------------------------
 
 # Training
 # Training of the semi supervsied aae
 @tf.function
 # need data x and labels y
-def train_step(batch_x):
+def train_step(batch_x, batch_y):
     with tf.GradientTape() as ae_tape:
-        encoder_z, encoder_y = encoder_ae(batch_x, supervised=False, training=True)
+        encoder_z, _, encoder_y = encoder_ae(batch_x, training=True)
         decoder_input = tf.concat([encoder_z, encoder_y], axis=1)
         decoder_output = decoder(decoder_input)
 
@@ -171,7 +192,12 @@ def train_step(batch_x):
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     ae_grads = ae_tape.gradient(ae_loss, encoder_ae.trainable_variables + decoder.trainable_variables)
-    ae_optimizer.apply_gradients(zip(ae_grads, encoder_ae.trainable_variables + decoder.trainable_variables))
+    ae_optimizer.apply_gradients(
+            (grad, var)
+            for (grad, var) in zip(ae_grads, encoder_ae.trainable_variables)
+            if grad is not None
+        )
+
     # Training of the AE is done; Output is a reconstructed Image of the Input
     # no Labels need to be given to the encoder
 
@@ -219,8 +245,8 @@ def train_step(batch_x):
         # one Generator(=Encoder) but 2 Outputs
         # So Generator must be trained for z and y
         #       --> gen_y_loss and gen_z_loss
-        with tf.GradientTape() as gen_tape:
-            encoder_z, encoder_y = generator_y(batch_x, supervised=True, training=True)
+        with tf.GradientTape() as gen_tape:  # , tf.GradientTape() as label_tape:
+            encoder_z, _, encoder_y = encoder_ae(batch_x, training=True)
             dc_y_fake = discriminator_labels(encoder_y, training=True)
             dc_z_fake = discriminator_style(encoder_z, training=True)
 
@@ -231,11 +257,36 @@ def train_step(batch_x):
 
             gen_loss = gen_z_loss + gen_y_loss
 
-        gen_grads = gen_tape.gradient(gen_loss, generator_y.trainable_variables)
-        gen_optimizer.apply_gradients(zip(gen_grads, generator_y.trainable_variables))
+        gen_grads = gen_tape.gradient(gen_loss, encoder_ae.trainable_variables)
+        gen_optimizer.apply_gradients(
+            (grad, var)
+            for (grad, var) in zip(gen_grads, encoder_ae.trainable_variables)
+            if grad is not None
+        )
 
-        return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss
+        with tf.GradientTape() as label_tape:
+            encoder_z, encoder_y, _ = encoder_ae(batch_x, training=True)
 
+            '''
+            TODO: Loss Function mit Labels einfügen damit semisupervised richtig funktioniert
+            In the semi - supervised classification phase, the autoencoder updates
+            q(y|x) to minimize the cross-entropy cost on a labeled mini-batch
+            '''
+
+            labels = tf.one_hot(batch_y, n_labels)
+            #l_loss = label_loss(encoder_y, labels, label_loss_weight)
+            l_loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=encoder_y)
+
+        label_grads = label_tape.gradient(l_loss, encoder_ae.trainable_variables)
+        label_optimizer.apply_gradients(
+            (grad, var)
+            for (grad, var) in zip(label_grads, encoder_ae.trainable_variables)
+            if grad is not None
+        )
+
+        return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss
+
+# -------------------------------------------------------------------------------------------------------------
 
 for epoch in range(n_epochs):
     start = time.time()
@@ -251,8 +302,9 @@ for epoch in range(n_epochs):
     epoch_dc_z_loss_avg = tf.metrics.Mean()
     epoch_dc_z_acc_avg = tf.metrics.Mean()
     epoch_gen_loss_avg = tf.metrics.Mean()
+    epoch_label_loss_avg = tf.metrics.Mean()
 
-    for batch, (batch_x) in enumerate(train_dataset):
+    for batch, (batch_x, batch_y) in enumerate(train_dataset):
         # -------------------------------------------------------------------------------------------------------------
         # Calculate cyclic learning rate
         global_step = global_step + 1
@@ -262,8 +314,9 @@ for epoch in range(n_epochs):
         ae_optimizer.lr = clr
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
+        label_optimizer.lr = clr
 
-        ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss = train_step(batch_x)
+        ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss = train_step(batch_x, batch_y)
 
         epoch_ae_loss_avg(ae_loss)
 
@@ -274,67 +327,48 @@ for epoch in range(n_epochs):
         epoch_dc_z_acc_avg(dc_z_acc)
 
         epoch_gen_loss_avg(gen_loss)
+        epoch_label_loss_avg(l_loss)
 
     epoch_time = time.time() - start
     print('{:4d}: TIME: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
-          'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f}' \
+          'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f} CLASSIFICATION_LOSS: {:.4f}' \
           .format(epoch, epoch_time,
                   epoch_ae_loss_avg.result(),
                   epoch_dc_y_loss_avg.result(),
                   epoch_dc_y_acc_avg.result(),
                   epoch_dc_z_loss_avg.result(),
                   epoch_dc_z_acc_avg.result(),
-                  epoch_gen_loss_avg.result()))
+                  epoch_gen_loss_avg.result(),
+                  epoch_label_loss_avg.result()))
+
+    # -------------------------------------------------------------------------------------------------------------
 
     if epoch % 20 == 0:
         # Latent space of test set
-        x_test_encoded, x_test_encoded_l = encoder_ae(x_test, training=False)
-        label_list = list(y_test)
+        x_test_encoded, _, _ = encoder_ae(x_test, training=False)
+        label_list = list(y_test_original)
 
-        cmap = colors.ListedColormap(['blue', 'red'])
-        bounds = [0, 5, 10]
-        norm = colors.BoundaryNorm(bounds, cmap.N)
+        if MULTI_COLOR is True:
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                                 alpha=.9, s=2, cmap="tab10")
+        else:
+            cmap = colors.ListedColormap(['blue', 'red'])
+            bounds = [0, 5, 10]
+            norm = colors.BoundaryNorm(bounds, cmap.N)
 
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
-                    alpha=.4, s=2, cmap=cmap)
+            fig, ax = plt.subplots()
+            scatter = ax.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=label_list,
+                                 alpha=.9, s=2, cmap=cmap)
 
+        legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+        ax.add_artist(legend)
 
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="Classes")
-        ax.add_artist(legend1)
-
+        # ax.set_xlim([-30, 30])
+        # ax.set_ylim([-30, 30])
 
         plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
-
-        # ---------------------------------------------------------------------------------------------------------------------
-        # ---------------------------------------------------------------------------------------------------------------------
-        # ---------------------------------------------------------------------------------------------------------------------
-        # ---------------------------------------------------------------------------------------------------------------------
-        # Sampling
-        nx, ny = 10, 10
-        random_inputs = np.random.randn(2, z_dim)
-        sample_y = np.identity(2)
-        plt.subplot()
-        gs = gridspec.GridSpec(nx, ny, hspace=0.05, wspace=0.05)
-        i = 0
-        for r in random_inputs:
-            for t in sample_y:
-                r = np.reshape(r, (1, z_dim))
-                t = np.reshape(t, (1, n_labels))
-                dec_input = np.concatenate((r, t), 1)
-                x = decoder(dec_input.astype('float32'), training=False).numpy()
-                ax = plt.subplot(gs[i])
-                i += 1
-                img = np.array(x.tolist()).reshape(28, 28)
-                ax.imshow(img, cmap='gray')
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.set_aspect('auto')
-
-        plt.savefig(style_dir / ('epoch_%d.png' % epoch))
-        plt.close()
 
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
@@ -344,23 +378,25 @@ for epoch in range(n_epochs):
         # Latent space of validation set
         if epoch == n_epochs - 1:
             # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-            x_val_encoded, x_val_encoded_l = encoder_ae(x_val, training=False)
-            label_list = list(y_val)
+            # Latent space of test set
+            x_val_encoded, _, _ = encoder_ae(x_val, training=False)
+            label_list = list(y_val_original)
 
-            cmap = colors.ListedColormap(['blue', 'red'])
-            bounds = [0, 5, 10]
-            norm = colors.BoundaryNorm(bounds, cmap.N)
+            if MULTI_COLOR is True:
+                fig, ax = plt.subplots()
+                scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                                     alpha=0.9, s=2, cmap="tab10")
+            else:
+                cmap = colors.ListedColormap(['blue', 'red'])
+                bounds = [0, 5, 10]
+                norm = colors.BoundaryNorm(bounds, cmap.N)
 
-            fig, ax = plt.subplots()
-            scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
-                                 alpha=.4, s=2, cmap=cmap)
+                fig, ax = plt.subplots()
+                scatter = ax.scatter(x_val_encoded[:, 0], x_val_encoded[:, 1], c=label_list,
+                                     alpha=0.9, s=2, cmap=cmap)
 
-            legend1 = ax.legend(*scatter.legend_elements(),
-                                loc="lower left", title="Classes")
-            ax.add_artist(legend1)
+            legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+            ax.add_artist(legend)
 
             plt.savefig(latent_space_dir / 'validation_latentspace.png')
             plt.close('all')
-
-
-
