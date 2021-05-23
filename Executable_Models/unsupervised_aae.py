@@ -34,28 +34,30 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_5'
+latent_space_dir = experiment_dir / 'test_9'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
 sampling_dir.mkdir(exist_ok=True)
 
-multi_color = False
+multi_color = True
+print('Experiment', latent_space_dir)
 
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [8]
-delete = [8]
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [3, 8]
-
+anomaly = [6, 7]
+delete_y = [8, 9]
+delete_x = [8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # ---------------------------------------------------------
 # Traingins Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include, delete)
+x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include,
+                                                                 delete_y, delete_x)
 print(x_train.shape)
 print(y_train.shape)
 print(y_train_original.shape)
@@ -63,14 +65,15 @@ print(y_train_original.shape)
 # ---------------------------------------------------------
 # Testdata
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete)
+x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete_y, None)
 print(x_test.shape)
 print(y_test.shape)
 print(y_test_original.shape)
+
 # ---------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete)
+x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete_y, None)
 print(x_val.shape)
 print(y_val.shape)
 print(y_val_original.shape)
