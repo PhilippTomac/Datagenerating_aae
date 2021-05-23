@@ -38,9 +38,9 @@ class AAE:
         # Output Style variable z for reconstruction of the input
         encoded = tf.keras.layers.Dense(self.z_dim, name='outputz')(x)
         # Output of the labels with a softmax Cat(y)
-        encoded_labels_softmax = tf.keras.layers.Dense(self.labels, activation=tf.nn.softmax, name='softmaxlayer')(x)
         # Needed for training of the encoder
         encoded_labels = tf.keras.layers.Dense(self.labels, name='outputlabel')(x)
+        encoded_labels_softmax = tf.nn.softmax(encoded_labels)
 
         model = tf.keras.Model(inputs=inputs, outputs=[encoded, encoded_labels, encoded_labels_softmax], name='Encoder')
         return model
