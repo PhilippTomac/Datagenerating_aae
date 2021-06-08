@@ -1,11 +1,10 @@
-from matplotlib import pyplot as plt
+import numpy as np
+from matplotlib import pyplot as plt, colors
 
 from lib.DataHandler import MNIST
 from lib import models
 import tensorflow as tf
-
-
-
+import matplotlib.pyplot as plt
 '''
 Testing how to prepre the dataset
     - split into trainig, test and validation
@@ -13,45 +12,56 @@ Testing how to prepre the dataset
     - using the DataHandler of A3/A4
     - setting datapoints as normal, anomaly and unknown
 '''
-# ----------------------------------------------------------------------------------------------------------------------
-# Loading Data
-print('Process Data with DataHandler')
-mnist = MNIST(random_state=1993)
-
-anomaly = [9]
-drop = [0, 2, 3, 4, 5, 6, 7, 8]
-include = [1, 9]
-
-# ---------------------------------------------------------
-# Traingins Data
-print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include, None, None)
-print(x_train.shape)
-print(y_train.shape)
-print(y_train_original.shape)
-
-
-x_trai2n, y_trai2n, y_trai2n_original = mnist.get_datasplit('train', anomaly, drop, include, None, None)
-print(x_trai2n.shape)
-print(y_trai2n.shape)
-print(y_trai2n_original.shape)
-
-
-label_list = list(y_train)
-classes = set(label_list)
-print(classes)
-
+# -------------------------------------------------------------------------------------------------------------
 # Generator
 aae = models.AAE()
+encoder = aae.create_encoder()
+
 shape_noise = aae.shape_noise
+image_size = aae.image_size
 generator = aae.noise_generator()
+# -------------------------------------------------------------------------------------------------------------
+training_data = []
+mean = 3
+stddev = 0.05
+epoch = 100
+for i in range(epoch):
+    noise = tf.random.normal([1, 784], mean=mean, stddev=stddev, seed=1993)
+    img = generator(noise, training=False)
+    # plt.imshow(img[0, :, :, 0], cmap='gray')
+    # plt.savefig('image_%d' % i)
+    training_data.append(img)
 
-noise = tf.random.uniform([1, 100])
-img = generator(noise, training=False)
-plt.imshow(img[0, :, :, 0], cmap='gray')
-plt.savefig('image')
+training_data = np.array(training_data)
+training_data = training_data.reshape((-1, 28 * 28))
 
+print(training_data.shape)
 
+# -------------------------------------------------------------------------------------------------------------
+plot_data = tf.random.normal([1, 784], mean=mean, stddev=stddev, seed=1993)
+count, bins, ignored = plt.hist(plot_data, 30, density=True)
+plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
+               np.exp( - (bins - mean)**2 / (2 * stddev**2) ),
+         linewidth=2, color='r')
+plt.show()
 
+# -------------------------------------------------------------------------------------------------------------
+data = encoder(training_data, training=False)
+label_list = []
+for i in range(epoch):
+    label_list.append(1)
 
+cmap = colors.ListedColormap(['blue'])
+# bounds = [0, 5, 10]
+# norm = colors.BoundaryNorm(bounds, cmap.N)
 
+fig, ax = plt.subplots()
+scatter = ax.scatter(training_data[:, 0], training_data[:, 1], c=label_list,
+                     alpha=0.9, s=2, cmap=cmap)
+
+legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
+ax.add_artist(legend)
+
+plt.savefig('validation_latentspace.png')
+plt.close('all')
+# -------------------------------------------------------------------------------------------------------------
