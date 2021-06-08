@@ -154,7 +154,7 @@ class AAE:
         return model
 
     def noise_generator(self):
-        input = tf.keras.Input(shape=self.shape_noise)
+        input = tf.keras.Input(shape=self.image_size)
         x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.LeakyReLU()(x)
