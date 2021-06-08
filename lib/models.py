@@ -9,6 +9,7 @@ class AAE:
         self.z_dim = 2
         self.labels = 2
         self.n_labeled = 1000
+        self.shape_noise = (100,)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Encoders
@@ -151,6 +152,28 @@ class AAE:
         prediction = tf.keras.layers.Dense(1)(x)
         model = tf.keras.Model(inputs=encoded, outputs=prediction)
         return model
+
+    def noise_generator(self):
+        input = tf.keras.Input(shape=self.shape_noise)
+        x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        x = tf.keras.layers.Reshape((7, 7, 256))(x)
+
+        x = tf.keras.layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        x = tf.keras.layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        noise = tf.keras.layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False)(x)
+
+        model = tf.keras.Model(inputs=input, outputs=noise)
+        return model
+
 
     # @ TODO add Implementation from colab (GAN)
 # ----------------------------------------------------------------------------------------------------------------------
