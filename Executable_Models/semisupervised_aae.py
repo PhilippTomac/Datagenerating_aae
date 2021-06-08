@@ -14,6 +14,7 @@ from lib import models, DataHandler
 
 import time
 from pathlib import Path
+
 '''
 TODO: 
  - Check if model is correctly implemented --> Training Process: Gradient
@@ -48,7 +49,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'semisupervised_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_13'
+latent_space_dir = experiment_dir / 'test_179'
 latent_space_dir.mkdir(exist_ok=True)
 
 print('Experiment', latent_space_dir, ':')
@@ -60,35 +61,44 @@ MULTI_COLOR = True
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [1, 5]
-delete_y = [0, 2, 3, 4]
-delete_x = [0, 2, 3, 4]
+anomaly = [7, 9]
+delete_y = [7]
+delete_x = [7]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [1, 7, 9]
+
+# anomaly = [8]
+# # delete_y = [7]
+# # delete_x = [7]
+# drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+# include = [3, 8]
+
 # ---------------------------------------------------------
 # Traingins Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include,
-                                                                 delete_y, delete_x)
-print(x_train.shape)
-print(y_train.shape)
-print(y_train_original.shape)
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
+                                                         delete_y, delete_x, 5000)
+# print(x_train.shape)
+# print(y_train.shape)
+# print(y_train_original.shape)
 
 # ---------------------------------------------------------
 # Testdata
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete_y)
-print(x_test.shape)
-print(y_test.shape)
-print(y_test_original.shape)
+x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
+                                                      delete_y, None)
+# print(x_test.shape)
+# print(y_test.shape)
+# print(y_test_original.shape)
 
 # ---------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete_y)
-print(x_val.shape)
-print(y_val.shape)
-print(y_val_original.shape)
+x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
+                                                   delete_y, None)
+# print(x_val.shape)
+# print(y_val.shape)
+# print(y_val_original.shape)
 # ---------------------------------------------------------
 
 batch_size = 256
@@ -114,7 +124,6 @@ decoder = aae.create_decoder_sup_semi()
 discriminator_labels = aae.create_discriminator_label(n_labels)
 discriminator_style = aae.create_discriminator_style()
 
-
 # -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
 
@@ -136,7 +145,6 @@ else:
 
 legend = ax.legend(*scatter.legend_elements(), loc="center left", title="Classes")
 ax.add_artist(legend)
-
 
 plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
 plt.close('all')
@@ -190,6 +198,7 @@ label_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 n_epochs = 501
 
+
 # -------------------------------------------------------------------------------------------------------------
 
 # Training
@@ -220,10 +229,6 @@ def train_step(batch_x, batch_y):
         # Discriminator for the labels
         # Creating the Cat-Distribution for the labels
         # Create random num: batch_size labels between 0 and 9
-        # TODO change np.random to tf.random
-        # real_label_distribution = np.random.randint(low=0, high=n_labels, size=batch_size)
-        # real_label_distribution = np.eye(n_labels)[real_label_distribution]
-
         real_label_distribution = tf.experimental.numpy.random.randint(low=0, high=n_labels, size=batch_size)
         real_label_distribution = tf.one_hot(real_label_distribution, n_labels)
         real_z_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
@@ -274,7 +279,6 @@ def train_step(batch_x, batch_y):
         gen_grads = gen_tape.gradient(gen_loss, encoder_ae.trainable_variables)
         gen_optimizer.apply_gradients(zip(gen_grads, encoder_ae.trainable_variables))
 
-
         with tf.GradientTape() as label_tape:
             encoder_z, encoder_y, _ = encoder_ae(batch_x, training=True)
 
@@ -293,6 +297,7 @@ def train_step(batch_x, batch_y):
         label_optimizer.apply_gradients(zip(label_grads, encoder_ae.trainable_variables))
 
         return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss
+
 
 # -------------------------------------------------------------------------------------------------------------
 

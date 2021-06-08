@@ -5,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import gridspec, colors
 from matplotlib.cm import get_cmap
-
 from lib import models
 
 import time
@@ -34,7 +33,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_9'
+latent_space_dir = experiment_dir / 'test_179'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
@@ -47,43 +46,54 @@ print('Experiment', latent_space_dir)
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-anomaly = [6, 7]
-delete_y = [8, 9]
-delete_x = [8, 9]
-drop = None
-include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+anomaly = [7, 9]
+delete_y = [7]
+delete_x = [7]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [1, 7, 9]
+
+# anomaly = [8]
+# # delete_y = [7]
+# # delete_x = [7]
+# drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+# include = [3, 8]
 
 # ---------------------------------------------------------
 # Traingins Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_anomdata_nolabels('train', anomaly, drop, include,
-                                                                 delete_y, delete_x)
-print(x_train.shape)
-print(y_train.shape)
-print(y_train_original.shape)
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
+                                                         delete_y, delete_x, 5000)
+# print(x_train.shape)
+# print(y_train.shape)
+# print(y_train_original.shape)
 
 # ---------------------------------------------------------
 # Testdata
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_anomdata_nolabels('test', anomaly, drop, include, delete_y, None)
-print(x_test.shape)
-print(y_test.shape)
-print(y_test_original.shape)
+x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
+                                                      delete_y, None)
+# print(x_test.shape)
+# print(y_test.shape)
+# print(y_test_original.shape)
 
 # ---------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_anomdata_nolabels('val', anomaly, drop, include, delete_y, None)
-print(x_val.shape)
-print(y_val.shape)
-print(y_val_original.shape)
+x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
+                                                   delete_y, None)
+# print(x_val.shape)
+# print(y_val.shape)
+# print(y_val_original.shape)
 # ---------------------------------------------------------
+# Creating Noisy images
+noiseGenerator = RandomNoise()
+noise_output = noiseGenerator(x_train)
 
 # Parameter
 batch_size = 256
 train_buf = x_train.shape[0]
 
-train_dataset = tf.data.Dataset.from_tensor_slices(x_train)
+train_dataset = tf.data.Dataset.from_tensor_slices(noise_output)
 train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
 
@@ -97,13 +107,14 @@ z_dim = aae.z_dim
 h_dim = aae.h_dim
 image_size = aae.image_size
 
+
 encoder = aae.create_encoder()
 decoder = aae.create_decoder()
 discriminator = aae.create_discriminator_style()
 
-# encoder.summary()
-# decoder.summary()
-# discriminator.summary()
+encoder.summary()
+decoder.summary()
+discriminator.summary()
 
 # -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
@@ -129,7 +140,6 @@ ax.add_artist(legend)
 plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
 plt.close('all')
 # -------------------------------------------------------------------------------------------------------------
-
 
 
 # loss functions
@@ -170,6 +180,8 @@ n_epochs = 501
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
+
+
 
 
 # Training
@@ -258,7 +270,7 @@ for epoch in range(n_epochs):
                   epoch_dc_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
-    if epoch % 20 == 0:
+    if epoch % 100 == 0:
         # Latent space of test set
         x_test_encoded = encoder(x_test, training=False)
         label_list = list(y_test_original)
@@ -341,6 +353,3 @@ for epoch in range(n_epochs):
 
             plt.savefig(latent_space_dir / 'validation_latentspace.png')
             plt.close('all')
-
-
-
