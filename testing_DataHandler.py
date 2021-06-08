@@ -1,11 +1,9 @@
-import pandas as pd
-import tensorflow as tf
-import numpy as np
-
-# from lib.DataHandler import MNIST
-from numpy import newaxis
+from matplotlib import pyplot as plt
 
 from lib.DataHandler import MNIST
+from lib import models
+import tensorflow as tf
+
 
 
 '''
@@ -20,26 +18,38 @@ Testing how to prepre the dataset
 print('Process Data with DataHandler')
 mnist = MNIST(random_state=1993)
 
-anomaly = [4]
-delete_labels = [9]
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [4, 9]
+anomaly = [9]
+drop = [0, 2, 3, 4, 5, 6, 7, 8]
+include = [1, 9]
 
+# ---------------------------------------------------------
 # Traingins Data
-x_train, y_train = mnist.get_supervised_data('train', drop, include)
+print('Training Data...')
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include, None, None)
 print(x_train.shape)
 print(y_train.shape)
+print(y_train_original.shape)
 
-new_x = x_train[:, :, np.newaxis]
-print(new_x.shape)
-label = list(y_train)
-print(len(label))
 
-for i in range(len(label)):
-    new_x = np.array([x_train], [label[1]])
+x_trai2n, y_trai2n, y_trai2n_original = mnist.get_datasplit('train', anomaly, drop, include, None, None)
+print(x_trai2n.shape)
+print(y_trai2n.shape)
+print(y_trai2n_original.shape)
 
-print(new_x.shape)
 
+label_list = list(y_train)
+classes = set(label_list)
+print(classes)
+
+# Generator
+aae = models.AAE()
+shape_noise = aae.shape_noise
+generator = aae.noise_generator()
+
+noise = tf.random.uniform([1, 100])
+img = generator(noise, training=False)
+plt.imshow(img[0, :, :, 0], cmap='gray')
+plt.savefig('image')
 
 
 
