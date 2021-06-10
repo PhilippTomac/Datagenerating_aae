@@ -1,0 +1,143 @@
+############################
+##############
+Bekannte Normale Daten und Bekannte Anomalen
+
+##############
+REF 1:
+anomaly = [9]
+drop = [0, 2, 3, 4, 5, 6, 7, 8]
+include = [1, 9]
+Done: Unsup, Semisup
+
+##############
+REF 2 :
+anomaly = [4]
+drop = [0, 1, 3, 5, 6, 7, 8, 9]
+include = [2, 4]
+Done: Unsup, Semisup
+
+##############
+TEST 1:
+anomaly = [7]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [2, 7]
+Done: Unsup, Semisup
+
+##############
+TEST 2:
+anomaly = [8]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [3, 8]
+Done: Unsup, Semisup
+
+##############
+TEST 3:
+anomaly = [9]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [4, 9]
+Done: Unsup, Semisup
+
+TEST 3_1:
+anomaly = [9] 100x at training, full at validation
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [4, 9]
+Done: Unsup, Semisup
+
+##############
+TEST 7:
+anomaly = [0, 1, 2, 3, 4, 5]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+Done: Unsup, Semisup
+
+##############
+TEST 8:
+anomaly = [6, 7, 8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+Done: Unsup, Semisup
+
+
+############################
+##############
+Bekannte Normale Daten und unbekannte Anomalen
+
+##############
+REF 3:
+anomaly = [9]
+delete_y = [9]
+delete_x = [9]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [1, 9]
+
+##############
+REF 4:
+anomaly = [4]
+delete_y = [4]
+delete_x = [4]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [2, 4]
+
+##############
+TEST 4:
+anomaly = [7]
+delete_y = [7]
+delete_x = [7]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [2, 7]
+
+##############
+TEST 5:
+anomaly = [8]
+delete_y = [8]
+delete_x = [8]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [3, 8]
+
+##############
+TEST 6:
+anomaly = [9]
+delete_y = [9]
+delete_x = [9]
+drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+include = [4, 9]
+
+##############
+TEST 9:
+anomaly = [6, 7]
+delete_y = [8, 9]
+delete_x = [8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+##############
+TEST 10:
+anomaly = [8, 9]
+delete_y = [6, 7]
+delete_x = [6, 7]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+##############
+TEST 11:
+anomaly = [6, 7, 8, 9]
+delete_y = [6, 7, 8, 9]
+delete_x = [6, 7, 8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+##############
+TEST 12:
+anomaly = [1, 5]
+delete_y = [6, 7, 8, 9]
+delete_x = [6, 7, 8, 9]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+##############
+TEST 13:
+anomaly = [1, 5]
+delete_y = [0, 2, 3, 4]
+delete_x = [0, 2, 3, 4]
+drop = None
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]

@@ -1,0 +1,10 @@
+# ignore the Output-Data
+unsupervisied_aae/
+supervised_aae/
+semisupervised_aae/
+mnist_analysis/
+Masterarbeit_GPU/notizen.txt
+Masterarbeit_GPU/Experiment.txt
+Masterarbeit_GPU/testing_dataHandler.py
+Masterarbeit_GPU/image_distribution.png
+Masterarbeit_GPU/image_generated.png
