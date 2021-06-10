@@ -1,0 +1,9 @@
+experiment_results/unsupervisied_aae/
+experiment_results/supervised_aae/
+experiment_results/semisupervised_aae/
+experiment_results/mnist_analysis/
+notizen.txt
+Experiment.txt
+testing_dataHandler.py
+image_distribution.png
+image_generated.png
