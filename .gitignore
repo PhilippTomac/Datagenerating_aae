@@ -7,3 +7,4 @@ experiment_results/mnist_analysis/
 /testing_dataHandler.py
 /image_distribution.png
 /image_generated.png
+.idea
