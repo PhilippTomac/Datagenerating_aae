@@ -10,6 +10,7 @@ class AAE:
         self.labels = 2
         self.n_labeled = 1000
         self.shape_noise = (100,)
+        self.gan_discriminator_input = (28, 28, 1)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Encoders
@@ -153,7 +154,50 @@ class AAE:
         model = tf.keras.Model(inputs=encoded, outputs=prediction)
         return model
 
+    # ----------------------------------------------------------------------------------------------------------------------
+    # GAN for creating samples
+    # Generator of the GAN
+    # return: 28x28 Grayscale Image
     def noise_generator(self):
+        input = tf.keras.Input(shape=self.shape_noise)
+        x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        x = tf.keras.layers.Reshape((7, 7, 256))(x)
+
+        x = tf.keras.layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        x = tf.keras.layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+
+        noise = tf.keras.layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False)(x)
+
+        model = tf.keras.Model(inputs=input, outputs=noise)
+        return model
+
+    # Discriminator of the GAN
+    # return: Decision Value
+    def noise_discrimniator(self):
+        input = tf.keras.Input(shape=self.gan_discriminator_input)
+        x = tf.keras.layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same')(input)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
+
+        x = tf.keras.layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same')(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
+
+        x = tf.keras.layers.Flatten()(x)
+        decision = tf.keras.layers.Dense(1)(x)
+
+        model = tf.keras.Model(inputs=input, outputs=decision)
+        return model
+
+    def noise_generator2(self):
         input = tf.keras.Input(shape=self.image_size)
         x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
         x = tf.keras.layers.BatchNormalization()(x)
@@ -174,9 +218,22 @@ class AAE:
         model = tf.keras.Model(inputs=input, outputs=noise)
         return model
 
+    # Discriminator of the GAN
+    # return: Decision Value
+    def noise_discrimniator2(self):
+        input = tf.keras.Input(shape=self.gan_discriminator_input)
+        x = tf.keras.layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same')(input)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
 
-    # @ TODO add Implementation from colab (GAN)
-# ----------------------------------------------------------------------------------------------------------------------
+        x = tf.keras.layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same')(x)
+        x = tf.keras.layers.LeakyReLU()(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
 
-# ----------------------------------------------------------------------------------------------------------------------
-# models for basic
+        x = tf.keras.layers.Flatten()(x)
+        decision = tf.keras.layers.Dense(1)(x)
+
+        model = tf.keras.Model(inputs=input, outputs=decision)
+        return model
+
+

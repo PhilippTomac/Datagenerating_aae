@@ -1,20 +1,19 @@
-# Imports
+## Imports
+# Matplot
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import numpy as np
-import tensorflow as tf
 from matplotlib import gridspec, colors
 from matplotlib.cm import get_cmap
-from lib import models
 
+import numpy as np
+import tensorflow as tf
 import time
 from pathlib import Path
 
+from lib import models
 from lib.DataHandler import MNIST
 
-import sys
-sys.path.append('/home/fipsi/Documents/Code/Masterarbeit_GPU')
-
+# GPU:
 # Reduce the hunger of TF when we're training on a GPU
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
@@ -26,31 +25,36 @@ except IndexError:
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
+
+
 # -------------------------------------------------------------------------------------------------------------
+# Paths for images
 ROOT_PATH = Path.cwd()
 # Path for images and results
 output_dir = ROOT_PATH / 'experiment_results'
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'unsupervisied_aae_noise'
+experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'test_noise_1_9'
+latent_space_dir = experiment_dir / 'saveModel_test'
 latent_space_dir.mkdir(exist_ok=True)
-
-generated_data_dir = latent_space_dir / 'generated_data'
-generated_data_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
 sampling_dir.mkdir(exist_ok=True)
 
+# -------------------------------------------------------------------------------------------------------------
+# Var for the plots
+# if 2 classes = False; more then 2 = True
 multi_color = True
+
 print('Experiment', latent_space_dir)
 
 # Data MNIST
+# Loading the MNIST Data
 print("1. Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
-
+# Setting Anomalies and Normal Data
 anomaly = [9]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 include = [1, 9]
@@ -62,9 +66,10 @@ include = [1, 9]
 # include = [3, 8]
 
 # -------------------------------------------------------------------------------------------------------------
+# Creating the dataset
 # Traingins Data
 x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         None, None, 5000)
+                                                         None, None)
 # print(x_train.shape)
 # print(y_train.shape)
 # print(y_train_original.shape)
@@ -86,7 +91,7 @@ x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include
 # print(y_val_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
-# Creating the models
+# Creating the aae model
 aae = models.AAE()
 z_dim = aae.z_dim
 h_dim = aae.h_dim
@@ -96,63 +101,64 @@ encoder = aae.create_encoder()
 decoder = aae.create_decoder()
 discriminator = aae.create_discriminator_style()
 
-# encoder.summary()
-# decoder.summary()
-# discriminator.summary()
 # -------------------------------------------------------------------------------------------------------------
-# TODO: Generating Data and adding it to the Dataset
-print('Creating noisy images...')
-generator = aae.noise_generator()
-# Parameter for the generator to create Datapoints
-mean = 100
-stddev = 50
-n_noise_img = 100
-noise_dataset = []
-original_noise_labels = []
-anomalie_labels = []
-
-# Creating Datapoints and the labels
-for i in range(n_noise_img):
-    # Normal distribution
-    noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-    # Generator creating an image
-    img_noise = generator(noise, training=False)
-    noise_dataset.append(img_noise)
-    # Adding Labels
-    # number 10 for generated images
-    original_noise_labels.append(10)
-    # Anomalie label
-    anomalie_labels.append(1)
-
-print('Creating noisy dataset...')
-# Transforming the data to a dataset that can be used by the aae
-noise_dataset = np.array(noise_dataset)
-noise_dataset = noise_dataset.reshape((-1, 28*28))
-
-original_noise_labels = np.array(original_noise_labels)
-anomalie_labels = np.array(anomalie_labels)
-
-# Plotting the Data Distribution
-noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-count, bins, ignored = plt.hist(noise, 30, density=True)
-plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
-               np.exp(- (bins - mean)**2 / (2 * stddev**2)),
-         linewidth=2, color='r')
-plt.savefig(generated_data_dir / 'generated_data_spread.png')
-plt.close('all')
-
-# Adding the generated data to the original data
-x_train = np.concatenate((x_train, noise_dataset), axis=0)
-y_train = np.concatenate((y_train, anomalie_labels))
-y_train_original = np.concatenate((y_train_original, original_noise_labels))
-
-x_test = np.concatenate((x_test, noise_dataset), axis=0)
-y_test = np.concatenate((y_test, anomalie_labels))
-y_test_original = np.concatenate((y_test_original, original_noise_labels))
-
-x_val = np.concatenate((x_val, noise_dataset), axis=0)
-y_val = np.concatenate((y_val, anomalie_labels))
-y_val_original = np.concatenate((y_val_original, original_noise_labels))
+# # TODO: Generating Data and adding it to the Dataset
+'''
+Generating the Data with a GAN
+Function is not beeing used right now
+'''
+# print('Creating noisy images...')
+# generator = aae.noise_generator2()
+# # Parameter for the generator to create Datapoints
+# mean = 100
+# stddev = 50
+# n_noise_img = 100
+# noise_dataset = []
+# original_noise_labels = []
+# anomalie_labels = []
+#
+# # Creating Datapoints and the labels
+# for i in range(n_noise_img):
+#     # Normal distribution
+#     noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
+#     # Generator creating an image
+#     img_noise = generator(noise, training=False)
+#     noise_dataset.append(img_noise)
+#     # Adding Labels
+#     # number 10 for generated images
+#     original_noise_labels.append(10)
+#     # Anomalie label
+#     anomalie_labels.append(1)
+#
+# print('Creating noisy dataset...')
+# # Transforming the data to a dataset that can be used by the aae
+# noise_dataset = np.array(noise_dataset)
+# noise_dataset = noise_dataset.reshape((-1, 28*28))
+#
+# original_noise_labels = np.array(original_noise_labels)
+# anomalie_labels = np.array(anomalie_labels)
+#
+# # Plotting the Data Distribution
+# noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
+# count, bins, ignored = plt.hist(noise, 30, density=True)
+# plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
+#                np.exp(- (bins - mean)**2 / (2 * stddev**2)),
+#          linewidth=2, color='r')
+# plt.savefig(generated_data_dir / 'generated_data_spread.png')
+# plt.close('all')
+#
+# # Adding the generated data to the original data
+# x_train = np.concatenate((x_train, noise_dataset), axis=0)
+# y_train = np.concatenate((y_train, anomalie_labels))
+# y_train_original = np.concatenate((y_train_original, original_noise_labels))
+#
+# x_test = np.concatenate((x_test, noise_dataset), axis=0)
+# y_test = np.concatenate((y_test, anomalie_labels))
+# y_test_original = np.concatenate((y_test_original, original_noise_labels))
+#
+# x_val = np.concatenate((x_val, noise_dataset), axis=0)
+# y_val = np.concatenate((y_val, anomalie_labels))
+# y_val_original = np.concatenate((y_val_original, original_noise_labels))
 # -------------------------------------------------------------------------------------------------------------
 
 # Parameter
@@ -165,6 +171,7 @@ train_dataset = train_dataset.batch(batch_size)
 
 # -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
+# Plotting the Validation set before the training
 x_val_encoded = encoder(x_val, training=False)
 label_list = list(y_val_original)
 
@@ -187,8 +194,6 @@ ax.add_artist(legend)
 plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
 plt.close('all')
 # -------------------------------------------------------------------------------------------------------------
-
-
 # loss functions
 ae_loss_weight = 1.
 gen_loss_weight = 1.
@@ -229,7 +234,6 @@ dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
 
-
 # Training
 @tf.function
 def train_step(batch_x):
@@ -238,7 +242,6 @@ def train_step(batch_x):
         encoder_output = encoder(batch_x, training=True)
         decoder_output = decoder(encoder_output, training=True)
 
-        # Autoencoder loss
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     ae_grads = ae_tape.gradient(ae_loss, encoder.trainable_variables + decoder.trainable_variables)
@@ -317,6 +320,7 @@ for epoch in range(n_epochs):
                   epoch_gen_loss_avg.result()))
 
     if epoch % 100 == 0:
+
         # Latent space of test set
         x_test_encoded = encoder(x_test, training=False)
         label_list = list(y_test_original)
@@ -368,7 +372,6 @@ for epoch in range(n_epochs):
             ax.set_aspect('auto')
         plt.savefig(sampling_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
-
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
@@ -399,3 +402,7 @@ for epoch in range(n_epochs):
 
             plt.savefig(latent_space_dir / 'validation_latentspace.png')
             plt.close('all')
+
+# Saving the trained decoder and encoder
+encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Encoder/encoder_weights')
+decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Decoder/decoder_weights')

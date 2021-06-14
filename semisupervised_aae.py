@@ -15,21 +15,9 @@ from lib.DataHandler import MNIST
 
 import time
 from pathlib import Path
-
-
-
-'''
-TODO: 
- - Check if model is correctly implemented --> Training Process: Gradient
- - Start new test 
-    - With known Anomalies its supervised and not semisupervised. Minimize the number of known Anomalies
- - Validate solution of the test
-'''
 # -------------------------------------------------------------------------------------------------------------
 
 # Reduce the hunger of TF when we're training on a GPU
-
-
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
 except IndexError:
@@ -44,42 +32,38 @@ np.random.seed(random_seed)
 # -------------------------------------------------------------------------------------------------------------
 ROOT_PATH = Path.cwd()
 # Path for images and results
-output_dir = ROOT_PATH / 'Executable_Models/experiment_results'
+output_dir = ROOT_PATH / 'experiment_results'
 output_dir.mkdir(exist_ok=True)
 
 experiment_dir = output_dir / 'semisupervised_aae_noise'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'tested_noise_1_9'
+latent_space_dir = experiment_dir / 'tested_noise_1_89_halfMSE'
 latent_space_dir.mkdir(exist_ok=True)
 
-generated_data_dir = latent_space_dir / 'generated_data'
-generated_data_dir.mkdir(exist_ok=True)
+# generated_data_dir = latent_space_dir / 'generated_data'
+# generated_data_dir.mkdir(exist_ok=True)
 
 print('Experiment', latent_space_dir, ':')
 
 # -------------------------------------------------------------------------------------------------------------
-MULTI_COLOR = True
+MULTI_COLOR = False
 
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 
-# anomaly = [7, 9]
-# delete_y = [7]
-# delete_x = [7]
-# drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-# include = [1, 7, 9]
-
-anomaly = [9]
+anomaly = [8, 9]
+delete_y = [8]
+delete_x = [8]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [1, 9]
+include = [1, 8, 9]
 
 # ---------------------------------------------------------
 # Traingins Data
 print('Training Data...')
 x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         None, None, 5000)
+                                                         delete_y, delete_x, 50)
 # print(x_train.shape)
 # print(y_train.shape)
 # print(y_train_original.shape)
@@ -88,7 +72,7 @@ x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop,
 # Testdata
 print('Test Data...')
 x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
-                                                      None, None)
+                                                      delete_y, None)
 # print(x_test.shape)
 # print(y_test.shape)
 # print(y_test_original.shape)
@@ -97,7 +81,7 @@ x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, inc
 # Validation data
 print('Validation Data...')
 x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
-                                                   None, None)
+                                                   delete_y, None)
 # print(x_val.shape)
 # print(y_val.shape)
 # print(y_val_original.shape)
@@ -111,49 +95,49 @@ z_dim = aae.z_dim
 
 # TODO: Generating Data and adding it to the Dataset
 print('Creating noisy images...')
-generator = aae.noise_generator()
-# Parameter for the
-mean = 100
-stddev = 50
-n_noise_img = 100
-noise_dataset = []
-noise_labels = []
-
-for i in range(n_noise_img):
-    noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-    img_noise = generator(noise, training=False)
-    noise_dataset.append(img_noise)
-    # number 10 for generated images
-    noise_labels.append(10)
-
-print('Creating noisy dataset...')
-noise_dataset = np.array(noise_dataset)
-noise_dataset = noise_dataset.reshape((-1, 28 * 28))
-print(noise_dataset.shape)
-
-noise_labels = np.array(noise_labels)
-print(noise_labels.shape)
-
-noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-count, bins, ignored = plt.hist(noise, 30, density=True)
-plt.plot(bins, 1 / (stddev * np.sqrt(2 * np.pi)) *
-         np.exp(- (bins - mean) ** 2 / (2 * stddev ** 2)),
-         linewidth=2, color='r')
-# plt.show()
-plt.savefig(generated_data_dir / 'generated_data_spread.png')
-plt.close('all')
-
-x_train = np.concatenate((x_train, noise_dataset), axis=0)
-y_train = np.concatenate((y_train, noise_labels))
-y_train_original = np.concatenate((y_train_original, noise_labels))
-
-x_test = np.concatenate((x_test, noise_dataset), axis=0)
-y_test = np.concatenate((y_test, noise_labels))
-y_test_original = np.concatenate((y_test_original, noise_labels))
-
-x_val = np.concatenate((x_val, noise_dataset), axis=0)
-y_val = np.concatenate((y_val, noise_labels))
-y_val_original = np.concatenate((y_val_original, noise_labels))
+# generator = aae.noise_generator()
+# # Parameter for the
+# mean = 100
+# stddev = 50
+# n_noise_img = 100
+# noise_dataset = []
+# noise_labels = []
+#
+# for i in range(n_noise_img):
+#     noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
+#     img_noise = generator(noise, training=False)
+#     noise_dataset.append(img_noise)
+#     # number 10 for generated images
+#     noise_labels.append(10)
+#
+# print('Creating noisy dataset...')
+# noise_dataset = np.array(noise_dataset)
+# noise_dataset = noise_dataset.reshape((-1, 28 * 28))
+# print(noise_dataset.shape)
+#
+# noise_labels = np.array(noise_labels)
+# print(noise_labels.shape)
+#
+# noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
+# count, bins, ignored = plt.hist(noise, 30, density=True)
+# plt.plot(bins, 1 / (stddev * np.sqrt(2 * np.pi)) *
+#          np.exp(- (bins - mean) ** 2 / (2 * stddev ** 2)),
+#          linewidth=2, color='r')
+# # plt.show()
+# plt.savefig(generated_data_dir / 'generated_data_spread.png')
+# plt.close('all')
+#
+# x_train = np.concatenate((x_train, noise_dataset), axis=0)
+# y_train = np.concatenate((y_train, noise_labels))
+# y_train_original = np.concatenate((y_train_original, noise_labels))
+#
+# x_test = np.concatenate((x_test, noise_dataset), axis=0)
+# y_test = np.concatenate((y_test, noise_labels))
+# y_test_original = np.concatenate((y_test_original, noise_labels))
+#
+# x_val = np.concatenate((x_val, noise_dataset), axis=0)
+# y_val = np.concatenate((y_val, noise_labels))
+# y_val_original = np.concatenate((y_val_original, noise_labels))
 
 # -------------------------------------------------------------------------------------------------------------
 batch_size = 256
@@ -258,9 +242,10 @@ def train_step(batch_x, batch_y):
     with tf.GradientTape() as ae_tape:
         encoder_z, _, encoder_softmax = encoder_ae(batch_x, training=True)
         decoder_input = tf.concat([encoder_z, encoder_softmax], axis=1)
-        decoder_output = decoder(decoder_input)
 
-        # Autoencoder Loss
+        decoder_output = decoder(decoder_input, training=True)
+
+        # # Autoencoder Loss: half mse
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     ae_grads = ae_tape.gradient(ae_loss, encoder_ae.trainable_variables + decoder.trainable_variables)
