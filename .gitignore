@@ -3,3 +3,5 @@ experiment_results/
 /Experiment.txt
 /testing_dataHandler.py
 .idea
+/SavedModels_Decoder/
+/SavedModels_Encoder/
