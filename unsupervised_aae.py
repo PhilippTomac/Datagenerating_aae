@@ -37,7 +37,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'saveModel_test'
+latent_space_dir = experiment_dir / 'exp_1_9'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
@@ -404,5 +404,5 @@ for epoch in range(n_epochs):
             plt.close('all')
 
 # Saving the trained decoder and encoder
-encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Encoder/encoder_weights')
-decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Decoder/decoder_weights')
+encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Encoder/encoder_weights', True)
+decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Decoder/decoder_weights', True)
