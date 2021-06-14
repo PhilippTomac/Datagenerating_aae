@@ -32,7 +32,44 @@ decoder = aae.create_decoder()
 
 decoder.load_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Decoder/decoder_weights')
 
-z = tf.random.normal([1, 2], mean=2, stddev=0.1)
+# ------------------------------------------------------------------------------------------------------
+# One Datapoint
+z = tf.random.normal([1, 2], mean=1.5, stddev=0.6)
 decoder_out = decoder(z)
 
 print(decoder_out.shape)
+generated_image = decoder_out.numpy()
+
+restore_image = generated_image.reshape(generated_image.shape[0], 28, 28)
+print(restore_image.shape)
+
+plt.imshow(restore_image[0], cmap='gray')
+plt.savefig('test_generated.png')
+plt.close('all')
+
+# ------------------------------------------------------------------------------------------------------
+# n Datapoints
+data = []
+
+for i  in range(100):
+    z = tf.random.normal([1, 2], mean=1.5, stddev=0.6)
+    data.append(z)
+
+images = []
+print(len(data))
+for i in range(len(data)):
+    decoder_out = decoder(data[i])
+    decoder_out_numpy = decoder_out.numpy()
+    restored_img = decoder_out_numpy.reshape(decoder_out_numpy.shape[0], 28, 28)
+    images.append(restored_img)
+print(images[2].shape)
+
+
+plt.imshow(images[99][0], cmap='gray')
+plt.savefig('test_generated_loop.png')
+plt.close('all')
+
+
+
+
+
