@@ -46,53 +46,53 @@ class DataLabels:
     available_classes: Union[List[int], List[str]] = None  # all available classes
 
     ## Class methods
-    # def __repr__(self):
-    #     return self.__class__.__name__
-    #
-    # def get_data_unsupervised(self, data_split: str,
-    #                           drop_classes: Union[List[int], List[str]] = None,
-    #                           include_classes: Union[List[int], List[str]] = None
-    #                           ) -> Tuple[np.ndarray, np.ndarray]:
-    #     """
-    #     Get data for useful for autoencoders
-    #     :param data_split: get data of either "train", "val" or "test"
-    #     :param drop_classes: which classes to drop, drop none if None
-    #     :param include_classes: which classes to include (has priority over drop_classes)
-    #     :return: features and labels -- ERROR: here are no labels, just the data
-    #     """
-    #     # Get data
-    #     this_data = self._get_data_set(data_split=data_split)
-    #
-    #     # Drop the classes
-    #     if include_classes:
-    #         drop_classes = self.include_to_drop(include_classes)
-    #     this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-    #
-    #     # For the autoencoder, we don't need much else than x
-    #     return this_x, this_x
+    def __repr__(self):
+        return self.__class__.__name__
 
-    # def get_supervised_data(
-    #         self, data_split: str,
-    #         drop_classes: Union[List[int], List[str]] = None, include_classes: Union[List[int], List[str]] = None
-    # ) -> Tuple[np.ndarray, np.ndarray]:
-    #     """
-    #     Get data for useful for classifiers
-    #     :param data_split: get data of either "train", "val" or "test"
-    #     :param drop_classes: which classes to drop, drop none if None
-    #     :param include_classes: which classes to include (has priority over drop_classes)
-    #     :return: features and labels
-    #     """
-    #     # Get data
-    #     this_data = self._get_data_set(data_split=data_split)
-    #
-    #     # Drop the classes
-    #     if include_classes:
-    #         drop_classes = self.include_to_drop(include_classes)
-    #     this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-    #     this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-    #
-    #     # Return the data
-    #     return this_x, this_y
+    def get_data_unsupervised(self, data_split: str,
+                              drop_classes: Union[List[int], List[str]] = None,
+                              include_classes: Union[List[int], List[str]] = None
+                              ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get data for useful for autoencoders
+        :param data_split: get data of either "train", "val" or "test"
+        :param drop_classes: which classes to drop, drop none if None
+        :param include_classes: which classes to include (has priority over drop_classes)
+        :return: features and labels -- ERROR: here are no labels, just the data
+        """
+        # Get data
+        this_data = self._get_data_set(data_split=data_split)
+
+        # Drop the classes
+        if include_classes:
+            drop_classes = self.include_to_drop(include_classes)
+        this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+
+        # For the autoencoder, we don't need much else than x
+        return this_x, this_x
+
+    def get_supervised_data(
+            self, data_split: str,
+            drop_classes: Union[List[int], List[str]] = None, include_classes: Union[List[int], List[str]] = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get data for useful for classifiers
+        :param data_split: get data of either "train", "val" or "test"
+        :param drop_classes: which classes to drop, drop none if None
+        :param include_classes: which classes to include (has priority over drop_classes)
+        :return: features and labels
+        """
+        # Get data
+        this_data = self._get_data_set(data_split=data_split)
+
+        # Drop the classes
+        if include_classes:
+            drop_classes = self.include_to_drop(include_classes)
+        this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+        this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+
+        # Return the data
+        return this_x, this_y
 
     # def get_semisupervised_data(
     #         self, data_split: str, anomaly_classes: Union[List[int], List[str]], drop_classes: List[int] = None,

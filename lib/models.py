@@ -160,7 +160,7 @@ class AAE:
     # return: 28x28 Grayscale Image
     def noise_generator(self):
         input = tf.keras.Input(shape=self.shape_noise)
-        x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
+        x = tf.keras.layers.Dense(7 * 7 * 256, use_bias=False)(input)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.LeakyReLU()(x)
 
@@ -199,7 +199,7 @@ class AAE:
 
     def noise_generator2(self):
         input = tf.keras.Input(shape=self.image_size)
-        x = tf.keras.layers.Dense(7*7*256, use_bias=False)(input)
+        x = tf.keras.layers.Dense(7 * 7 * 256, use_bias=False)(input)
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.LeakyReLU()(x)
 
@@ -236,4 +236,28 @@ class AAE:
         model = tf.keras.Model(inputs=input, outputs=decision)
         return model
 
+    def create_classifier(self):
+        input = tf.keras.layers.Input(shape=(28, 28, 1))
+        x = tf.keras.layers.Dense(64, (5, 5), strides=(1, 1), padding='same', activation='relu')(input)
+        x = tf.keras.layers.MaxPool2D((2, 2), strides=(2, 2))(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
 
+        x = tf.keras.layers.Conv2D(128, (5, 5), strides=(1, 1), padding='same', activation='relu')(input)
+        x = tf.keras.layers.MaxPool2D((2, 2), strides=(2, 2))(x)
+        # x = tf.keras.layers.Dropout(0.3)(x)
+
+        x = tf.keras.layers.Conv2D(248, (5, 5), strides=(1, 1), padding='same', activation='relu')(input)
+        x = tf.keras.layers.MaxPool2D((2, 2), strides=(2, 2))(x)
+        x = tf.keras.layers.Dropout(0.3)(x)
+
+        x = tf.keras.layers.Flatten()(input)
+        x = tf.keras.layers.Dense(1024, activation='relu')(x)
+        x = tf.keras.layers.Dense(512, activation='relu')(x)
+        x = tf.keras.layers.Dense(256, activation='relu')(x)
+        x = tf.keras.layers.Dense(100, activation='relu')(x)
+        x = tf.keras.layers.Dense(100, activation='relu')(x)
+        x = tf.keras.layers.Dense(10, activation='relu')(x)
+        decision = tf.keras.layers.Dense(2, activation='softmax')(x)
+
+        model = tf.keras.Model(inputs=input, outputs=decision)
+        return model
