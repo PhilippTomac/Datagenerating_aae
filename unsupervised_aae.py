@@ -37,7 +37,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'exp_1_9'
+latent_space_dir = experiment_dir / 'gen_0_8'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
@@ -55,9 +55,9 @@ print('Experiment', latent_space_dir)
 print("1. Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 # Setting Anomalies and Normal Data
-anomaly = [9]
+anomaly = [8]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [1, 9]
+include = [0, 8]
 
 # anomaly = [8]
 # # delete_y = [7]
@@ -404,5 +404,5 @@ for epoch in range(n_epochs):
             plt.close('all')
 
 # Saving the trained decoder and encoder
-encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Encoder/encoder_weights', True)
-decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/SavedModels_Decoder/decoder_weights', True)
+encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/TrainedModels/Encoder_0_8/encoder_weights', True)
+decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/TrainedModels/Decoder_0_8/decoder_weigts', True)
