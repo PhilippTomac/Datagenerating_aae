@@ -22,11 +22,11 @@ Testing how to prepre the dataset
     - setting datapoints as normal, anomaly and unknown
 '''
 # -------------------------------------------------------------------------------------------------------------
-anomaly = [9]
+anomaly = [8, 9]
 # delete_y = [7]
 # delete_x = [7]
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [9]
+drop = [1, 2, 3]
+include = [0, 4, 5, 6, 7, 8, 9]
 # -------------------------------------------------------------------------------------------------------------
 # Traingins Data
 # Setting the seed
@@ -37,59 +37,64 @@ mnist = MNIST(random_state=random_seed)
 
 print('Training Data...')
 x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         None, None, 5000)
+                                                         None, None)
 print(x_train.shape)
 print(y_train.shape)
-# print(y_train_original.shape)
+print(y_train_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
 # Testdata
 print('Test Data...')
 x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
                                                       None, None)
-# print(x_test.shape)
-# print(y_test.shape)
-# print(y_test_original.shape)
+print(x_test.shape)
+print(y_test.shape)
+print(y_test_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
 # Validation data
 print('Validation Data...')
 x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
                                                    None, None)
-# print(x_val.shape)
-# print(y_val.shape)
-# print(y_val_original.shape)
+print(x_val.shape)
+print(y_val.shape)
+print(y_val_original.shape)
+# -------------------------------------------------------------------------------------------------------------
+
+
+
+
 # -------------------------------------------------------------------------------------------------------------
 # Generator
-aae = models.AAE()
-encoder = aae.create_encoder()
-decoder = aae.create_decoder()
-
-shape_noise = aae.shape_noise
-image_size = aae.image_size
-discriminator_input = aae.gan_discriminator_input
-
-generator = aae.noise_generator()
-# -------------------------------------------------------------------------------------------------------------
-training_data = []
-noise_label = []
-mean = 2 # 100
-stddev = 1 # 50
-epoch = 100
-
-noise = tf.random.normal([3, 4], mean=mean, stddev=stddev, seed=1993)
-print(noise)
-# z = encoder(noise, training=False)
-# blub = tf.random.normal([1, 2], mean=2, stddev=0.5, seed=1993)
-# new = np.concatenate((z, blub), axis=0)
-# img = decoder(new, training=False)
-
-fig = plt.figure()
-count, bins, ignored = plt.hist(noise, 30, density=True)
-plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
-               np.exp(- (bins - mean)**2 / (2 * stddev**2)),
-         linewidth=2, color='r')
-plt.show()
+# aae = models.AAE()
+# encoder = aae.create_encoder()
+# decoder = aae.create_decoder()
+#
+# shape_noise = aae.shape_noise
+# image_size = aae.image_size
+# discriminator_input = aae.gan_discriminator_input
+#
+# generator = aae.noise_generator()
+# # -------------------------------------------------------------------------------------------------------------
+# training_data = []
+# noise_label = []
+# mean = 2 # 100
+# stddev = 1 # 50
+# epoch = 100
+#
+# noise = tf.random.normal([3, 4], mean=mean, stddev=stddev, seed=1993)
+# print(noise)
+# # z = encoder(noise, training=False)
+# # blub = tf.random.normal([1, 2], mean=2, stddev=0.5, seed=1993)
+# # new = np.concatenate((z, blub), axis=0)
+# # img = decoder(new, training=False)
+#
+# fig = plt.figure()
+# count, bins, ignored = plt.hist(noise, 30, density=True)
+# plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
+#                np.exp(- (bins - mean)**2 / (2 * stddev**2)),
+#          linewidth=2, color='r')
+# plt.show()
 
 # plt.imshow(img, cmap='gray')
 # plt.savefig('image_generated')
