@@ -6,7 +6,7 @@ from typing import List
 import numpy as np
 
 
-def create_anomalie_dataset(drop_classes: List[int] = None):
+def create_anomalie_dataset(anomaly_classes: List[int] = None):
     x_train_generated9 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_9/generated_Images.npy')
     y_train_generated9 = np.load(
@@ -65,8 +65,8 @@ def create_anomalie_dataset(drop_classes: List[int] = None):
                                         y_train_generated4, y_train_generated5, y_train_generated6, y_train_generated7,
                                         y_train_generated8, y_train_generated9], axis=0)
 
-    x_generated = np.delete(x_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)), axis=0)
-    y_generated = np.delete(y_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)), axis=0)
+    x_generated = np.delete(x_train_generated, np.where(np.isin(y_train_generated, anomaly_classes, invert=True)), axis=0)
+    y_generated = np.delete(y_train_generated, np.where(np.isin(y_train_generated, anomaly_classes, invert=True)), axis=0)
     print(x_generated.shape, y_generated.shape)
 
     np.save('/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/generated_Images', x_generated)
@@ -78,4 +78,5 @@ def create_anomalie_dataset(drop_classes: List[int] = None):
 
 a, b = create_anomalie_dataset([6, 7])
 print(a.shape, b.shape)
+print(b)
 

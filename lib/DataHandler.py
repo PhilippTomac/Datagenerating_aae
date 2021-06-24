@@ -10,10 +10,88 @@ from sklearn.base import TransformerMixin
 
 from typing import List, Union, Tuple
 
+# from loading_generatedData import create_anomalie_dataset
+
 '''
 Class to split the data in train, test and validition.
 Also to define what datapoints are included and what datapoints are normal/anomaly
 '''
+
+
+def create_anomalie_dataset(drop_classes: List[int] = None):
+    x_train_generated9 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_9/generated_Images.npy')
+    y_train_generated9 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_9/generated_labels.npy')
+
+    x_train_generated8 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_8/generated_Images.npy')
+    y_train_generated8 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_8/generated_labels.npy')
+
+    x_train_generated7 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_7/generated_Images.npy')
+    y_train_generated7 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_7/generated_labels.npy')
+
+    x_train_generated6 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_6/generated_Images.npy')
+    y_train_generated6 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_6/generated_labels.npy')
+
+    x_train_generated5 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_5/generated_Images.npy')
+    y_train_generated5 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_5/generated_labels.npy')
+
+    x_train_generated4 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_4/generated_Images.npy')
+    y_train_generated4 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_4/generated_labels.npy')
+
+    x_train_generated3 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_3/generated_Images.npy')
+    y_train_generated3 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_3/generated_labels.npy')
+
+    x_train_generated2 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_2/generated_Images.npy')
+    y_train_generated2 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_2/generated_labels.npy')
+
+    x_train_generated1 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_1/generated_Images.npy')
+    y_train_generated1 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_1/generated_labels.npy')
+
+    x_train_generated0 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_0/generated_Images.npy')
+    y_train_generated0 = np.load(
+        '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_0/generated_labels.npy')
+
+    x_train_generated = np.concatenate(
+        [x_train_generated0, x_train_generated1, x_train_generated2, x_train_generated3,
+         x_train_generated4, x_train_generated5, x_train_generated6, x_train_generated7,
+         x_train_generated8, x_train_generated9], axis=0)
+
+    y_train_generated = np.concatenate(
+        [y_train_generated0, y_train_generated1, y_train_generated2, y_train_generated3,
+         y_train_generated4, y_train_generated5, y_train_generated6, y_train_generated7,
+         y_train_generated8, y_train_generated9], axis=0)
+
+    x_generated = np.delete(x_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)),
+                            axis=0)
+    y_generated = np.delete(y_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)),
+                            axis=0)
+    print(x_generated.shape, y_generated.shape)
+
+    np.save('/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/generated_Images', x_generated)
+    np.save('/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/generated_labels', y_generated)
+
+    x_generated = x_generated.reshape((-1, 28 * 28)) # / 255.
+
+
+    return x_generated, y_generated
 
 
 @dataclass
@@ -48,6 +126,7 @@ class DataLabels:
     ## Class methods
     def __repr__(self):
         return self.__class__.__name__
+
 
     def get_data_unsupervised(self, data_split: str,
                               drop_classes: Union[List[int], List[str]] = None,
@@ -173,11 +252,22 @@ class DataLabels:
         # Get data
         this_data = self._get_data_set(data_split=data_split)
 
+        this_x = this_data[0]
+        this_y = this_data[1]
+
+        # TODO Add generated Data
+        if data_split == 'train':
+            this_x = np.delete(this_x, np.where(np.isin(this_y, anomaly_classes)), axis=0)
+            this_y = np.delete(this_y, np.where(np.isin(this_y, anomaly_classes)), axis=0)
+            gen_x, gen_y = create_anomalie_dataset(anomaly_classes)
+            this_x = np.concatenate([this_x, gen_x], axis=0)
+            this_y = np.concatenate([this_y, gen_y], axis=0)
+
         # Drop the classes
         if include_classes:
             drop_classes = self.include_to_drop(include_classes)
-        this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-        this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+        this_x = np.delete(this_x, np.where(np.isin(this_y, drop_classes)), axis=0)
+        this_y = np.delete(this_y, np.where(np.isin(this_y, drop_classes)), axis=0)
         y_original = np.copy(this_y)
 
         # Delete Labels of specific classes
@@ -214,12 +304,6 @@ class DataLabels:
         return this_x, this_y, y_original
 
 
-    '''
-    @TODO:
-    Erzeugen von verrauschten Bildern mit GaussianNoise
-    Diese Daten in den Datensatz hinzufügen
-    --> Generierne von Daten in bestimmten Bereichen
-    '''
 
     ## Preprocessors
     @abc.abstractmethod
@@ -313,6 +397,8 @@ class MNIST(DataLabels):
         super(MNIST, self).__init__(
             x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, *args, **kwargs
         )
+
+
 
     def _preprocess(self):
         """

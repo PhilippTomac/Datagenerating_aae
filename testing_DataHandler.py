@@ -37,7 +37,7 @@ mnist = MNIST(random_state=random_seed)
 
 print('Training Data...')
 x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         None, None)
+                                                         None, None, 100)
 print(x_train.shape)
 print(y_train.shape)
 print(y_train_original.shape)
