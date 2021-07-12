@@ -38,7 +38,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'semisupervised_aae_noise'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'tested_noise_1_89_halfMSE'
+latent_space_dir = experiment_dir / 'test_mit_einruck'
 latent_space_dir.mkdir(exist_ok=True)
 
 # generated_data_dir = latent_space_dir / 'generated_data'
@@ -47,7 +47,7 @@ latent_space_dir.mkdir(exist_ok=True)
 print('Experiment', latent_space_dir, ':')
 
 # -------------------------------------------------------------------------------------------------------------
-MULTI_COLOR = False
+MULTI_COLOR = True
 
 # Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
@@ -288,49 +288,49 @@ def train_step(batch_x, batch_y):
         dc_z_acc = accuracy(tf.concat([tf.ones_like(dc_z_real), tf.zeros_like(dc_z_fake)], axis=0),
                             tf.concat([dc_z_real, dc_y_fake], axis=0))
 
-        dc_y_grads = dc_tape1.gradient(dc_y_loss, discriminator_labels.trainable_variables)
-        dc_optimizer.apply_gradients(zip(dc_y_grads, discriminator_labels.trainable_variables))
+    dc_y_grads = dc_tape1.gradient(dc_y_loss, discriminator_labels.trainable_variables)
+    dc_optimizer.apply_gradients(zip(dc_y_grads, discriminator_labels.trainable_variables))
 
-        dc_z_grads = dc_tape2.gradient(dc_z_loss, discriminator_style.trainable_variables)
-        dc_optimizer.apply_gradients(zip(dc_z_grads, discriminator_style.trainable_variables))
+    dc_z_grads = dc_tape2.gradient(dc_z_loss, discriminator_style.trainable_variables)
+    dc_optimizer.apply_gradients(zip(dc_z_grads, discriminator_style.trainable_variables))
 
-        # Training Generator
-        # one Generator(=Encoder) but 2 Outputs
-        # So Generator must be trained for z and y
-        #       --> gen_y_loss and gen_z_loss
-        with tf.GradientTape() as gen_tape:  # , tf.GradientTape() as label_tape:
-            encoder_z, _, encoder_y = encoder_ae(batch_x, training=True)
-            dc_y_fake = discriminator_labels(encoder_y, training=True)
-            dc_z_fake = discriminator_style(encoder_z, training=True)
+    # Training Generator
+    # one Generator(=Encoder) but 2 Outputs
+    # So Generator must be trained for z and y
+    #       --> gen_y_loss and gen_z_loss
+    with tf.GradientTape() as gen_tape:  # , tf.GradientTape() as label_tape:
+        encoder_z, _, encoder_y = encoder_ae(batch_x, training=True)
+        dc_y_fake = discriminator_labels(encoder_y, training=True)
+        dc_z_fake = discriminator_style(encoder_z, training=True)
 
-            # Generator loss y
-            gen_y_loss = generator_loss(dc_y_fake, gen_loss_weight)
-            # Generator loss z
-            gen_z_loss = generator_loss(dc_z_fake, gen_loss_weight)
+        # Generator loss y
+        gen_y_loss = generator_loss(dc_y_fake, gen_loss_weight)
+        # Generator loss z
+        gen_z_loss = generator_loss(dc_z_fake, gen_loss_weight)
 
-            gen_loss = gen_z_loss + gen_y_loss
+        gen_loss = gen_z_loss + gen_y_loss
 
-        gen_grads = gen_tape.gradient(gen_loss, encoder_ae.trainable_variables)
-        gen_optimizer.apply_gradients(zip(gen_grads, encoder_ae.trainable_variables))
+    gen_grads = gen_tape.gradient(gen_loss, encoder_ae.trainable_variables)
+    gen_optimizer.apply_gradients(zip(gen_grads, encoder_ae.trainable_variables))
 
-        with tf.GradientTape() as label_tape:
-            encoder_z, encoder_y, _ = encoder_ae(batch_x, training=True)
+    with tf.GradientTape() as label_tape:
+        encoder_z, encoder_y, _ = encoder_ae(batch_x, training=True)
 
-            '''
-            TODO: Loss Function mit Labels einfügen damit semisupervised richtig funktioniert
-            In the semi - supervised classification phase, the autoencoder updates
-            q(y|x) to minimize the cross-entropy cost on a labeled mini-batch
-            '''
+        '''
+        TODO: Loss Function mit Labels einfügen damit semisupervised richtig funktioniert
+        In the semi - supervised classification phase, the autoencoder updates
+        q(y|x) to minimize the cross-entropy cost on a labeled mini-batch
+        '''
 
-            labels = tf.one_hot(batch_y, n_labels)
-            l_loss = label_loss(labels, encoder_y, label_loss_weight)
-            # l_loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=encoder_y)
-            # l_loss = tf.reduce_mean(l_loss)
+        labels = tf.one_hot(batch_y, n_labels)
+        l_loss = label_loss(labels, encoder_y, label_loss_weight)
+        # l_loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=encoder_y)
+        # l_loss = tf.reduce_mean(l_loss)
 
-        label_grads = label_tape.gradient(l_loss, encoder_ae.trainable_variables)
-        label_optimizer.apply_gradients(zip(label_grads, encoder_ae.trainable_variables))
+    label_grads = label_tape.gradient(l_loss, encoder_ae.trainable_variables)
+    label_optimizer.apply_gradients(zip(label_grads, encoder_ae.trainable_variables))
 
-        return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss
+    return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss
 
 
 # -------------------------------------------------------------------------------------------------------------
