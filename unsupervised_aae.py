@@ -37,7 +37,7 @@ output_dir.mkdir(exist_ok=True)
 experiment_dir = output_dir / 'unsupervisied_aae'
 experiment_dir.mkdir(exist_ok=True)
 
-latent_space_dir = experiment_dir / 'gen_0_8'
+latent_space_dir = experiment_dir / 'test_nightly'
 latent_space_dir.mkdir(exist_ok=True)
 
 sampling_dir = latent_space_dir / 'Sampling'
