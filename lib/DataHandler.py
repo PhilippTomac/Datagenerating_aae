@@ -12,85 +12,97 @@ from typing import List, Union, Tuple
 
 # from loading_generatedData import create_anomalie_dataset
 
-'''
-Class to split the data in train, test and validition.
-Also to define what datapoints are included and what datapoints are normal/anomaly
-'''
+# Function to load generated dataset
+def create_anomalie_dataset(needed_classes: List[int] = None):
+    # 1. Load all datasets from every number and the corresponding labels
 
-
-def create_anomalie_dataset(drop_classes: List[int] = None):
+    # Datapoint 9
     x_train_generated9 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_9/generated_Images.npy')
     y_train_generated9 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_9/generated_labels.npy')
 
+    # Datapoint 8
     x_train_generated8 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_8/generated_Images.npy')
     y_train_generated8 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_8/generated_labels.npy')
 
+    # Datapoint 7
     x_train_generated7 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_7/generated_Images.npy')
     y_train_generated7 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_7/generated_labels.npy')
 
+    # Datapoint 6
     x_train_generated6 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_6/generated_Images.npy')
     y_train_generated6 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_6/generated_labels.npy')
 
+    # Datapoint 5
     x_train_generated5 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_5/generated_Images.npy')
     y_train_generated5 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_5/generated_labels.npy')
 
+    # Datapoint 4
     x_train_generated4 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_4/generated_Images.npy')
     y_train_generated4 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_4/generated_labels.npy')
 
+    # Datapoint 3
     x_train_generated3 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_3/generated_Images.npy')
     y_train_generated3 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_3/generated_labels.npy')
 
+    # Datapoint 2
     x_train_generated2 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_2/generated_Images.npy')
     y_train_generated2 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_2/generated_labels.npy')
 
+    # Datapoint 1
     x_train_generated1 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_1/generated_Images.npy')
     y_train_generated1 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_1/generated_labels.npy')
 
+    # Datapoint 0
     x_train_generated0 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_0/generated_Images.npy')
     y_train_generated0 = np.load(
         '/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/DataPoint_0/generated_labels.npy')
 
-    x_train_generated = np.concatenate(
-        [x_train_generated0, x_train_generated1, x_train_generated2, x_train_generated3,
-         x_train_generated4, x_train_generated5, x_train_generated6, x_train_generated7,
-         x_train_generated8, x_train_generated9], axis=0)
+    # 2. Concatenate all arrays into one big dataset
+    #   Datapoints and Label separately
+    x_train_generated = np.concatenate([x_train_generated0, x_train_generated1, x_train_generated2, x_train_generated3,
+                                        x_train_generated4, x_train_generated5, x_train_generated6, x_train_generated7,
+                                        x_train_generated8, x_train_generated9], axis=0)
 
-    y_train_generated = np.concatenate(
-        [y_train_generated0, y_train_generated1, y_train_generated2, y_train_generated3,
-         y_train_generated4, y_train_generated5, y_train_generated6, y_train_generated7,
-         y_train_generated8, y_train_generated9], axis=0)
+    y_train_generated = np.concatenate([y_train_generated0, y_train_generated1, y_train_generated2, y_train_generated3,
+                                        y_train_generated4, y_train_generated5, y_train_generated6, y_train_generated7,
+                                        y_train_generated8, y_train_generated9], axis=0)
 
-    x_generated = np.delete(x_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)),
-                            axis=0)
-    y_generated = np.delete(y_train_generated, np.where(np.isin(y_train_generated, drop_classes, invert=True)),
-                            axis=0)
-    print(x_generated.shape, y_generated.shape)
+    # 3. Deleting the points that are not wanted in the Dataset
+    #   all classes that are not in the list needed_classes will be deleted from the dataset
+    if needed_classes:
+        x_generated = np.delete(x_train_generated,
+                                np.where(np.isin(y_train_generated, needed_classes, invert=True)), axis=0)
+        y_generated = np.delete(y_train_generated,
+                                np.where(np.isin(y_train_generated, needed_classes, invert=True)), axis=0)
 
+    # 4. Save the created datasets
     np.save('/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/generated_Images', x_generated)
     np.save('/home/fipsi/Documents/Code/Masterarbeit_GPU/Generated_Data/generated_labels', y_generated)
 
-    x_generated = x_generated.reshape((-1, 28 * 28)) # / 255.
+    # 5. Normalising the dataset
+    # TODO: Maybe not needed becouse A3 loads the data and normalise itself. Must be checked!
+    x_generated = x_generated.reshape((-1, 28 * 28)) / 255.
 
-
+    # 6.  return the datasets
     return x_generated, y_generated
 
 
@@ -128,6 +140,7 @@ class DataLabels:
         return self.__class__.__name__
 
 
+    # Function of data without labels
     def get_data_unsupervised(self, data_split: str,
                               drop_classes: Union[List[int], List[str]] = None,
                               include_classes: Union[List[int], List[str]] = None
@@ -150,6 +163,7 @@ class DataLabels:
         # For the autoencoder, we don't need much else than x
         return this_x, this_x
 
+    # Function of data with labels
     def get_supervised_data(
             self, data_split: str,
             drop_classes: Union[List[int], List[str]] = None, include_classes: Union[List[int], List[str]] = None
@@ -173,6 +187,7 @@ class DataLabels:
         # Return the data
         return this_x, this_y
 
+    # Function of data without labels, number of anomalies can be limited to get the semi supervised scenario
     def get_semisupervised_data(
             self, data_split: str, anomaly_classes: Union[List[int], List[str]], drop_classes: List[int] = None,
             include_classes: List[int] = None,
@@ -232,6 +247,7 @@ class DataLabels:
     Function to prepare the Dataset in the way that just the normal data is labeled
     --> Delete Anormal labels
     '''
+    # Global Function to load data with all needed functions
     def get_datasplit(
             self, data_split: str, anomaly_classes: Union[List[int], List[str]] = None, drop_classes: List[int] = None,
             include_classes: List[int] = None,
@@ -294,7 +310,7 @@ class DataLabels:
 
         return this_x, this_y, y_original
 
-
+    # Function same as get_datasplit just with loading generated datapoints for anomalies
     def get_datasplit_generated(
             self, data_split: str, anomaly_classes: Union[List[int], List[str]] = None, drop_classes: List[int] = None,
             include_classes: List[int] = None,
@@ -383,7 +399,6 @@ class DataLabels:
         np.random.seed(seed=self.random_state)
 
         # Get all available classes
-        # TODO: we're only looking at the training data so far
         self.available_classes = np.unique(self.y_train).tolist()
 
         # Split in test and train
@@ -459,8 +474,6 @@ class MNIST(DataLabels):
         super(MNIST, self).__init__(
             x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, *args, **kwargs
         )
-
-
 
     def _preprocess(self):
         """
