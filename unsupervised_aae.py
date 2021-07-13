@@ -1,9 +1,7 @@
 ## Imports
 # Matplot
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib import gridspec, colors
-from matplotlib.cm import get_cmap
 
 import numpy as np
 import tensorflow as tf
@@ -13,7 +11,7 @@ from pathlib import Path
 from lib import models
 from lib.DataHandler import MNIST
 
-# GPU:
+# -------------------------------------------------------------------------------------------------------------
 # Reduce the hunger of TF when we're training on a GPU
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
@@ -21,40 +19,36 @@ except IndexError:
     tf.config.run_functions_eagerly(True)
     pass  # No GPUs available
 
-# Setting the seed
+# -------------------------------------------------------------------------------------------------------------
+# Setting Seed for better comparison
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
 
-
 # -------------------------------------------------------------------------------------------------------------
-# Paths for images
+# Creating Paths for the File-System
 ROOT_PATH = Path.cwd()
 # Path for images and results
-output_dir = ROOT_PATH / 'experiment_results'
+# dir_name: var for the directory name where the images are going to be saved
+dir_name = 'test_nightly'
+output_dir = (ROOT_PATH / ('experiment_results/unsupervisied_aae/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'unsupervisied_aae'
-experiment_dir.mkdir(exist_ok=True)
-
-latent_space_dir = experiment_dir / 'test_nightly'
-latent_space_dir.mkdir(exist_ok=True)
-
-sampling_dir = latent_space_dir / 'Sampling'
+# Directory for the generated samples
+sampling_dir = output_dir / 'Sampling'
 sampling_dir.mkdir(exist_ok=True)
 
+# Visualisation if more aaes are trained parallel
+print('Experiment', output_dir, ':')
 # -------------------------------------------------------------------------------------------------------------
 # Var for the plots
-# if 2 classes = False; more then 2 = True
+# If more then 2 classes are in the dataset, set the var MULTI_COLOR to True
 multi_color = True
 
-print('Experiment', latent_space_dir)
-
-# Data MNIST
 # Loading the MNIST Data
 print("1. Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
-# Setting Anomalies and Normal Data
+# Selecting the needed Classes and categorize them
 anomaly = [8]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 include = [0, 8]
@@ -67,32 +61,32 @@ include = [0, 8]
 
 # -------------------------------------------------------------------------------------------------------------
 # Creating the dataset
-# Traingins Data
+# Training Data
+print('Training Data...')
 x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
                                                          None, None)
-# print(x_train.shape)
-# print(y_train.shape)
-# print(y_train_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
 # Testdata
+print('Test Data...')
 x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
                                                       None, None)
-# print(x_test.shape)
-# print(y_test.shape)
-# print(y_test_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
 # Validation data
+print('Validation Data...')
 x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
                                                    None, None)
-# print(x_val.shape)
-# print(y_val.shape)
-# print(y_val_original.shape)
 
 # -------------------------------------------------------------------------------------------------------------
 # Creating the aae model
 aae = models.AAE()
+'''
+:parameter
+z_dim = 2 - Compression in middle layer
+h_dim = 100 - Denselayer n-neurons
+image_size = 784 
+'''
 z_dim = aae.z_dim
 h_dim = aae.h_dim
 image_size = aae.image_size
@@ -102,66 +96,7 @@ decoder = aae.create_decoder()
 discriminator = aae.create_discriminator_style()
 
 # -------------------------------------------------------------------------------------------------------------
-# # TODO: Generating Data and adding it to the Dataset
-'''
-Generating the Data with a GAN
-Function is not beeing used right now
-'''
-# print('Creating noisy images...')
-# generator = aae.noise_generator2()
-# # Parameter for the generator to create Datapoints
-# mean = 100
-# stddev = 50
-# n_noise_img = 100
-# noise_dataset = []
-# original_noise_labels = []
-# anomalie_labels = []
-#
-# # Creating Datapoints and the labels
-# for i in range(n_noise_img):
-#     # Normal distribution
-#     noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-#     # Generator creating an image
-#     img_noise = generator(noise, training=False)
-#     noise_dataset.append(img_noise)
-#     # Adding Labels
-#     # number 10 for generated images
-#     original_noise_labels.append(10)
-#     # Anomalie label
-#     anomalie_labels.append(1)
-#
-# print('Creating noisy dataset...')
-# # Transforming the data to a dataset that can be used by the aae
-# noise_dataset = np.array(noise_dataset)
-# noise_dataset = noise_dataset.reshape((-1, 28*28))
-#
-# original_noise_labels = np.array(original_noise_labels)
-# anomalie_labels = np.array(anomalie_labels)
-#
-# # Plotting the Data Distribution
-# noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-# count, bins, ignored = plt.hist(noise, 30, density=True)
-# plt.plot(bins, 1/(stddev * np.sqrt(2 * np.pi)) *
-#                np.exp(- (bins - mean)**2 / (2 * stddev**2)),
-#          linewidth=2, color='r')
-# plt.savefig(generated_data_dir / 'generated_data_spread.png')
-# plt.close('all')
-#
-# # Adding the generated data to the original data
-# x_train = np.concatenate((x_train, noise_dataset), axis=0)
-# y_train = np.concatenate((y_train, anomalie_labels))
-# y_train_original = np.concatenate((y_train_original, original_noise_labels))
-#
-# x_test = np.concatenate((x_test, noise_dataset), axis=0)
-# y_test = np.concatenate((y_test, anomalie_labels))
-# y_test_original = np.concatenate((y_test_original, original_noise_labels))
-#
-# x_val = np.concatenate((x_val, noise_dataset), axis=0)
-# y_val = np.concatenate((y_val, anomalie_labels))
-# y_val_original = np.concatenate((y_val_original, original_noise_labels))
-# -------------------------------------------------------------------------------------------------------------
-
-# Parameter
+# Shuffeling the training data and divide into batches
 batch_size = 256
 train_buf = x_train.shape[0]
 
@@ -171,7 +106,7 @@ train_dataset = train_dataset.batch(batch_size)
 
 # -------------------------------------------------------------------------------------------------------------
 # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-# Plotting the Validation set before the training
+# Plotting the latent space before the training for comparison
 x_val_encoded = encoder(x_val, training=False)
 label_list = list(y_val_original)
 
@@ -191,10 +126,12 @@ else:
 legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
 ax.add_artist(legend)
 
-plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
+plt.savefig(output_dir / 'Before_training_validation_latentspace.png')
 plt.close('all')
+
 # -------------------------------------------------------------------------------------------------------------
-# loss functions
+# Loss Function
+# Weights can be changed for more or less effect in the trainingprocess
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
@@ -218,30 +155,35 @@ def generator_loss(fake_output, loss_weight):
     return loss_weight * cross_entropy(tf.ones_like(fake_output), fake_output)
 
 
-# learing rate
+# -------------------------------------------------------------------------------------------------------------
+# Circle Learning parameter
+# Later the lr can be changes and used without circle
 base_lr = 0.00025
 max_lr = 0.0025
 
+# Step size
 n_samples = x_train.shape[0]
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
-
-n_epochs = 501
 
 # Optimizier
 ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 
-
+# -------------------------------------------------------------------------------------------------------------
 # Training
+# Training function of the unsupervsied aae
 @tf.function
 def train_step(batch_x):
     # Autoencoder
     with tf.GradientTape() as ae_tape:
+        # Generating style z
         encoder_output = encoder(batch_x, training=True)
+        # Creating Images with the style z
         decoder_output = decoder(encoder_output, training=True)
 
+        # Autoencoder Loss:
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     ae_grads = ae_tape.gradient(ae_loss, encoder.trainable_variables + decoder.trainable_variables)
@@ -249,9 +191,12 @@ def train_step(batch_x):
 
     # Discriminator
     with tf.GradientTape() as dc_tape:
+        # Creating the 'real_distribution' with a normal distribution
         real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
+        # Generating style z
         encoder_output = encoder(batch_x, training=True)
 
+        # Give the discriminator the 2 distributions and compare the outputs
         dc_real = discriminator(real_distribution, training=True)
         dc_fake = discriminator(encoder_output, training=True)
 
@@ -265,7 +210,7 @@ def train_step(batch_x):
     dc_grads = dc_tape.gradient(dc_loss, discriminator.trainable_variables)
     dc_optimizer.apply_gradients(zip(dc_grads, discriminator.trainable_variables))
 
-    # Generator (Encoder)
+    # Generator, also the encoder
     with tf.GradientTape() as gen_tape:
         encoder_output = encoder(batch_x, training=True)
         dc_fake = discriminator(encoder_output, training=True)
@@ -279,15 +224,19 @@ def train_step(batch_x):
     return ae_loss, dc_loss, dc_acc, gen_loss
 
 
-# Start the training
+# -------------------------------------------------------------------------------------------------------------
+# Starting the training
+n_epochs = 501
+
 for epoch in range(n_epochs):
     start = time.time()
-
+    # calculate new lr and step size at specific epochs
     if epoch in [60, 120, 240, 360]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2
 
+    # mean functions of the loss
     epoch_ae_loss_avg = tf.metrics.Mean()
     epoch_dc_loss_avg = tf.metrics.Mean()
     epoch_dc_acc_avg = tf.metrics.Mean()
@@ -296,22 +245,27 @@ for epoch in range(n_epochs):
     for batch, (batch_x) in enumerate(train_dataset):
         # -------------------------------------------------------------------------------------------------------------
         # Calculate cyclic learning rate
+        # From the Git repo: ...
         global_step = global_step + 1
         cycle = np.floor(1 + global_step / (2 * step_size))
         x_lr = np.abs(global_step / step_size - 2 * cycle + 1)
         clr = base_lr + (max_lr - base_lr) * max(0, 1 - x_lr)
+        # Setting the optimizers
         ae_optimizer.lr = clr
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
 
+        # Calling the Train Function
         ae_loss, dc_loss, dc_acc, gen_loss = train_step(batch_x)
 
+        # Calucalting the average loss value
         epoch_ae_loss_avg(ae_loss)
         epoch_dc_loss_avg(dc_loss)
         epoch_dc_acc_avg(dc_acc)
         epoch_gen_loss_avg(gen_loss)
 
     epoch_time = time.time() - start
+    # Terminal Output
     print('{:4d}: TIME: {:.2f} AE_LOSS: {:.4f} DC_LOSS: {:.4f} DC_ACC: {:.4f} GEN_LOSS: {:.4f}' \
           .format(epoch, epoch_time,
                   epoch_ae_loss_avg.result(),
@@ -319,8 +273,9 @@ for epoch in range(n_epochs):
                   epoch_dc_acc_avg.result(),
                   epoch_gen_loss_avg.result()))
 
+    # -------------------------------------------------------------------------------------------------------------
+    # Ploting the latent space every 100 epochs
     if epoch % 100 == 0:
-
         # Latent space of test set
         x_test_encoded = encoder(x_test, training=False)
         label_list = list(y_test_original)
@@ -341,10 +296,7 @@ for epoch in range(n_epochs):
         legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
         ax.add_artist(legend)
 
-        # ax.set_xlim([-30, 30])
-        # ax.set_ylim([-30, 30])
-
-        plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
+        plt.savefig(output_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
 
         # ---------------------------------------------------------------------------------------------------------------------
@@ -352,7 +304,7 @@ for epoch in range(n_epochs):
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # Samling the data
-        # Code from Alireza Makhzani - AAE
+        # Codesnippet from Alireza Makhzani - AAE
         x_points = np.linspace(-3, 3, 20).astype(np.float32)
         y_points = np.linspace(-3, 3, 20).astype(np.float32)
 
@@ -376,8 +328,10 @@ for epoch in range(n_epochs):
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
-        # # VALIDATION
+        # VALIDATION
         # Latent space of validation set
+        # After the Training using the encoder to plot the latent space of the validation set to measure the performance
+        # on not seen datapoints
         if epoch == n_epochs - 1:
             # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
             # Latent space of test set
@@ -400,7 +354,7 @@ for epoch in range(n_epochs):
             legend = ax.legend(*scatter.legend_elements(), loc="lower left", title="Classes")
             ax.add_artist(legend)
 
-            plt.savefig(latent_space_dir / 'validation_latentspace.png')
+            plt.savefig(output_dir / 'validation_latentspace.png')
             plt.close('all')
 
 # Saving the trained decoder and encoder

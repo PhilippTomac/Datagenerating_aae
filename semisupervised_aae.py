@@ -18,14 +18,12 @@ except IndexError:
     tf.config.run_functions_eagerly(True)
     pass  # No GPUs available
 # -------------------------------------------------------------------------------------------------------------
-
 # Setting Seed for better comparison
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
 # -------------------------------------------------------------------------------------------------------------
 # Creating Paths for the File-System
-
 ROOT_PATH = Path.cwd()
 # Path for images and results
 # dir_name: var for the directory name where the images are going to be saved
@@ -33,8 +31,7 @@ dir_name = 'var_name'
 output_dir = (ROOT_PATH / ('experiment_results/semisupervised_aae_noise/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
-# Visualisation if more aaes are trained parallel
-print('Experiment', output_dir, ':')
+
 # -------------------------------------------------------------------------------------------------------------
 # If more then 2 classes are in the dataset, set the var MULTI_COLOR to True
 MULTI_COLOR = False
@@ -94,7 +91,7 @@ train_dataset = train_dataset.shuffle(buffer_size=train_buf)
 train_dataset = train_dataset.batch(batch_size)
 
 # -------------------------------------------------------------------------------------------------------------
-# Plotting the latentspace befor the training for comparison
+# Plotting the latent space before the training for comparison
 x_val_encoded, _, _ = encoder_ae(x_val, training=False)
 label_list = list(y_val_original)
 
@@ -149,7 +146,8 @@ def label_loss(label_input, label_reconstruction, label_loss_weight):
 
 
 # -------------------------------------------------------------------------------------------------------------
-# Circle Learning
+# Circle Learning parameter
+# Later the lr can be changes and used without circle
 base_lr = 0.00025
 max_lr = 0.0025
 
@@ -163,10 +161,10 @@ ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 label_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
-# -------------------------------------------------------------------------------------------------------------
 
+# -------------------------------------------------------------------------------------------------------------
 # Training
-# Training of the semi supervsied aae
+# Training function of the semi supervsied aae
 @tf.function
 # need data x and labels y
 def train_step(batch_x, batch_y):
@@ -270,11 +268,13 @@ n_epochs = 501
 for epoch in range(n_epochs):
     start = time.time()
 
+    # calculate new lr and step size at specific epochs
     if epoch in [60, 120, 240, 360]:
         base_lr = base_lr / 2
         max_lr = max_lr / 2
         step_size = step_size / 2
 
+    # mean functions of the loss
     epoch_ae_loss_avg = tf.metrics.Mean()
     epoch_dc_y_loss_avg = tf.metrics.Mean()
     epoch_dc_y_acc_avg = tf.metrics.Mean()
@@ -300,6 +300,7 @@ for epoch in range(n_epochs):
         # Calling the Train Function
         ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss = train_step(batch_x, batch_y)
 
+        # Calucalting the average loss value
         epoch_ae_loss_avg(ae_loss)
 
         epoch_dc_y_loss_avg(dc_y_loss)
