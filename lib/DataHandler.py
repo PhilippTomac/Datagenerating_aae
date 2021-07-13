@@ -173,60 +173,60 @@ class DataLabels:
         # Return the data
         return this_x, this_y
 
-    # def get_semisupervised_data(
-    #         self, data_split: str, anomaly_classes: Union[List[int], List[str]], drop_classes: List[int] = None,
-    #         include_classes: List[int] = None,
-    #         n_anomaly_samples: int = None
-    # ) -> tuple[ndarray, ndarray, ndarray]:
-    #     """
-    #     Get the labels for the alarm network, i.e. with binary anomaly labels
-    #     :param data_split: get data of either "train", "val" or "test"
-    #     :param anomaly_classes: classes marked as anomaly
-    #     :param drop_classes: which classes to drop (none if None)
-    #     :param include_classes: which classes to include (has priority over drop_classes)
-    #     :param n_anomaly_samples: reduce the number of anomaly samples
-    #     :return: features and labels
-    #     """
-    #     # Get data
-    #     this_data = self._get_data_set(data_split=data_split)
-    #
-    #     # Drop the classes
-    #     if include_classes:
-    #         drop_classes = self.include_to_drop(include_classes)
-    #     this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-    #     this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
-    #
-    #     y_original = np.copy(this_y)
-    #
-    #     # Make labels binary
-    #     this_y[np.where(~np.isin(this_y, anomaly_classes))] = -1
-    #     this_y[np.where(np.isin(this_y, anomaly_classes))] = 0
-    #     this_y += 1
-    #     this_y = this_y.astype("uint8")
-    #
-    #     # If desired, reduce the number anomalous samples
-    #     if n_anomaly_samples is not None:
-    #         # IDs of all anomaly samples
-    #         idx_anom = np.where(this_y == 1)[0]
-    #         idx_original = np.where(y_original == anomaly_classes)[0]
-    #
-    #         # Select the indices to delete
-    #         n_delete = len(idx_anom) - n_anomaly_samples
-    #         idx_delete = np.random.choice(idx_anom, size=n_delete, replace=False)
-    #
-    #         n_delete_original = len(idx_original) - n_anomaly_samples
-    #         original_delete = np.random.choice(idx_original, size=n_delete_original, replace=False)
-    #
-    #         # Delete indices
-    #         this_x = np.delete(this_x, idx_delete, axis=0)
-    #         this_y = np.delete(this_y, idx_delete, axis=0)
-    #
-    #         y_original = np.delete(y_original, original_delete, axis=0)
-    #
-    #         # Check if we really have the right amount of anomaly samples
-    #         assert np.sum(this_y) == n_anomaly_samples
-    #
-    #     return this_x, this_y, y_original
+    def get_semisupervised_data(
+            self, data_split: str, anomaly_classes: Union[List[int], List[str]], drop_classes: List[int] = None,
+            include_classes: List[int] = None,
+            n_anomaly_samples: int = None
+    ) -> tuple[ndarray, ndarray, ndarray]:
+        """
+        Get the labels for the alarm network, i.e. with binary anomaly labels
+        :param data_split: get data of either "train", "val" or "test"
+        :param anomaly_classes: classes marked as anomaly
+        :param drop_classes: which classes to drop (none if None)
+        :param include_classes: which classes to include (has priority over drop_classes)
+        :param n_anomaly_samples: reduce the number of anomaly samples
+        :return: features and labels
+        """
+        # Get data
+        this_data = self._get_data_set(data_split=data_split)
+
+        # Drop the classes
+        if include_classes:
+            drop_classes = self.include_to_drop(include_classes)
+        this_x = np.delete(this_data[0], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+        this_y = np.delete(this_data[1], np.where(np.isin(this_data[1], drop_classes)), axis=0)
+
+        y_original = np.copy(this_y)
+
+        # Make labels binary
+        this_y[np.where(~np.isin(this_y, anomaly_classes))] = -1
+        this_y[np.where(np.isin(this_y, anomaly_classes))] = 0
+        this_y += 1
+        this_y = this_y.astype("uint8")
+
+        # If desired, reduce the number anomalous samples
+        if n_anomaly_samples is not None:
+            # IDs of all anomaly samples
+            idx_anom = np.where(this_y == 1)[0]
+            idx_original = np.where(y_original == anomaly_classes)[0]
+
+            # Select the indices to delete
+            n_delete = len(idx_anom) - n_anomaly_samples
+            idx_delete = np.random.choice(idx_anom, size=n_delete, replace=False)
+
+            n_delete_original = len(idx_original) - n_anomaly_samples
+            original_delete = np.random.choice(idx_original, size=n_delete_original, replace=False)
+
+            # Delete indices
+            this_x = np.delete(this_x, idx_delete, axis=0)
+            this_y = np.delete(this_y, idx_delete, axis=0)
+
+            y_original = np.delete(y_original, original_delete, axis=0)
+
+            # Check if we really have the right amount of anomaly samples
+            assert np.sum(this_y) == n_anomaly_samples
+
+        return this_x, this_y, y_original
 
     '''
     Function to prepare the Dataset in the way that just the normal data is labeled

@@ -19,17 +19,6 @@ except IndexError:
     pass  # No GPUs available
 
 # ------------------------------------------------------------------------------------------------------
-ROOT_PATH = Path.cwd()
-# Path for images and results
-output_dir = ROOT_PATH / 'Generated_Data/DataPoint_1'
-output_dir.mkdir(exist_ok=True)
-# ------------------------------------------------------------------------------------------------------
-# Setting Seed for better comparison
-random_seed = 1993
-tf.random.set_seed(random_seed)
-np.random.seed(random_seed)
-
-# ------------------------------------------------------------------------------------------------------
 # Create and load the trained models
 aae = models.AAE()
 '''

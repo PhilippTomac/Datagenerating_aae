@@ -1,165 +1,100 @@
 # Imports
-from typing import List
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import numpy as np
 import tensorflow as tf
-import cv2
-from matplotlib import gridspec, colors
-from PIL import Image
-from matplotlib.cm import get_cmap
+import matplotlib.pyplot as plt
+from matplotlib import colors
+import time
+from pathlib import Path
 
 from lib import models, DataHandler
 from lib.DataHandler import MNIST
 
-import time
-from pathlib import Path
-# -------------------------------------------------------------------------------------------------------------
 
+# -------------------------------------------------------------------------------------------------------------
 # Reduce the hunger of TF when we're training on a GPU
 try:
     tf.config.experimental.set_memory_growth(tf.config.list_physical_devices("GPU")[0], True)
 except IndexError:
     tf.config.run_functions_eagerly(True)
     pass  # No GPUs available
-    # -------------------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------------------
 
-# Setting the seed
+# Setting Seed for better comparison
 random_seed = 1993
 tf.random.set_seed(random_seed)
 np.random.seed(random_seed)
 # -------------------------------------------------------------------------------------------------------------
+# Creating Paths for the File-System
+
 ROOT_PATH = Path.cwd()
 # Path for images and results
-output_dir = ROOT_PATH / 'experiment_results'
+# dir_name: var for the directory name where the images are going to be saved
+dir_name = 'var_name'
+output_dir = (ROOT_PATH / ('experiment_results/semisupervised_aae_noise/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
-experiment_dir = output_dir / 'semisupervised_aae_noise'
-experiment_dir.mkdir(exist_ok=True)
-
-latent_space_dir = experiment_dir / 'test_mit_einruck'
-latent_space_dir.mkdir(exist_ok=True)
-
-# generated_data_dir = latent_space_dir / 'generated_data'
-# generated_data_dir.mkdir(exist_ok=True)
-
-print('Experiment', latent_space_dir, ':')
-
+# Visualisation if more aaes are trained parallel
+print('Experiment', output_dir, ':')
 # -------------------------------------------------------------------------------------------------------------
-MULTI_COLOR = True
+# If more then 2 classes are in the dataset, set the var MULTI_COLOR to True
+MULTI_COLOR = False
 
-# Data MNIST
+# Loading Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
-
-anomaly = [8, 9]
-delete_y = [8]
-delete_x = [8]
+# Selecting the needed Classes and categorize them
+anomaly = [9]
+delete_y = [9]
+delete_x = [9]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [1, 8, 9]
+include = [1, 9]
 
 # ---------------------------------------------------------
-# Traingins Data
+# Training Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         delete_y, delete_x, 50)
-# print(x_train.shape)
-# print(y_train.shape)
-# print(y_train_original.shape)
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include, delete_y, delete_x)
 
 # ---------------------------------------------------------
-# Testdata
+# Test data
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
-                                                      delete_y, None)
-# print(x_test.shape)
-# print(y_test.shape)
-# print(y_test_original.shape)
+x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include, delete_y)
 
 # ---------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
-                                                   delete_y, None)
-# print(x_val.shape)
-# print(y_val.shape)
-# print(y_val_original.shape)
+x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include, delete_y)
 # -------------------------------------------------------------------------------------------------------------
+# Creating the needed models for the aae
 aae = models.AAE()
-# Parameter
+'''
+:parameter
+z_dim = 2 - Compression in middle layer
+h_dim = 100 - Denselayer n-neurons
+image_size = 784 
+n_labeled = 2 - normal, anomaly
+'''
+z_dim = aae.z_dim
+h_dim = aae.h_dim
 image_size = aae.image_size
 n_labeled = aae.n_labeled
-h_dim = aae.h_dim
-z_dim = aae.z_dim
 
-# TODO: Generating Data and adding it to the Dataset
-print('Creating noisy images...')
-# generator = aae.noise_generator()
-# # Parameter for the
-# mean = 100
-# stddev = 50
-# n_noise_img = 100
-# noise_dataset = []
-# noise_labels = []
-#
-# for i in range(n_noise_img):
-#     noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-#     img_noise = generator(noise, training=False)
-#     noise_dataset.append(img_noise)
-#     # number 10 for generated images
-#     noise_labels.append(10)
-#
-# print('Creating noisy dataset...')
-# noise_dataset = np.array(noise_dataset)
-# noise_dataset = noise_dataset.reshape((-1, 28 * 28))
-# print(noise_dataset.shape)
-#
-# noise_labels = np.array(noise_labels)
-# print(noise_labels.shape)
-#
-# noise = tf.random.normal([1, image_size], mean=mean, stddev=stddev, seed=random_seed)
-# count, bins, ignored = plt.hist(noise, 30, density=True)
-# plt.plot(bins, 1 / (stddev * np.sqrt(2 * np.pi)) *
-#          np.exp(- (bins - mean) ** 2 / (2 * stddev ** 2)),
-#          linewidth=2, color='r')
-# # plt.show()
-# plt.savefig(generated_data_dir / 'generated_data_spread.png')
-# plt.close('all')
-#
-# x_train = np.concatenate((x_train, noise_dataset), axis=0)
-# y_train = np.concatenate((y_train, noise_labels))
-# y_train_original = np.concatenate((y_train_original, noise_labels))
-#
-# x_test = np.concatenate((x_test, noise_dataset), axis=0)
-# y_test = np.concatenate((y_test, noise_labels))
-# y_test_original = np.concatenate((y_test_original, noise_labels))
-#
-# x_val = np.concatenate((x_val, noise_dataset), axis=0)
-# y_val = np.concatenate((y_val, noise_labels))
-# y_val_original = np.concatenate((y_val_original, noise_labels))
-
-# -------------------------------------------------------------------------------------------------------------
-batch_size = 256
-train_buf = x_train.shape[0]
-
-train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
-train_dataset = train_dataset.shuffle(buffer_size=train_buf)
-train_dataset = train_dataset.batch(batch_size)
-# -------------------------------------------------------------------------------------------------------------
-
-# creating the model parts
 n_labels = 2
 
 encoder_ae = aae.create_encoder_semi()
 decoder = aae.create_decoder_sup_semi()
 discriminator_labels = aae.create_discriminator_label(n_labels)
 discriminator_style = aae.create_discriminator_style()
+# -------------------------------------------------------------------------------------------------------------
+# Shuffeling the training data and divide into batches
+batch_size = 256
+train_buf = x_train.shape[0]
 
+train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+train_dataset = train_dataset.shuffle(buffer_size=train_buf)
+train_dataset = train_dataset.batch(batch_size)
 
 # -------------------------------------------------------------------------------------------------------------
-# Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
-
+# Plotting the latentspace befor the training for comparison
 x_val_encoded, _, _ = encoder_ae(x_val, training=False)
 label_list = list(y_val_original)
 
@@ -179,12 +114,12 @@ else:
 legend = ax.legend(*scatter.legend_elements(), loc="center left", title="Classes")
 ax.add_artist(legend)
 
-plt.savefig(latent_space_dir / 'Before_training_validation_latentspace.png')
+plt.savefig(output_dir / 'before_training_validation_latentspace.png')
 plt.close('all')
 
 # -------------------------------------------------------------------------------------------------------------
-
 # Loss Function
+# Weights can be changed for more or less effect in the trainingprocess
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
@@ -194,7 +129,6 @@ cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 mse = tf.keras.losses.MeanSquaredError()
 softmax = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 accuracy = tf.keras.metrics.BinaryAccuracy()
-
 
 def autoencoder_loss(inputs, reconstruction, loss_weight):
     return loss_weight * mse(inputs, reconstruction)
@@ -215,10 +149,11 @@ def label_loss(label_input, label_reconstruction, label_loss_weight):
 
 
 # -------------------------------------------------------------------------------------------------------------
-
+# Circle Learning
 base_lr = 0.00025
 max_lr = 0.0025
 
+# Step size
 n_samples = x_train.shape[0]
 step_size = 2 * np.ceil(n_samples / batch_size)
 global_step = 0
@@ -228,10 +163,6 @@ ae_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 dc_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 gen_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
 label_optimizer = tf.keras.optimizers.Adam(lr=base_lr)
-
-n_epochs = 501
-
-
 # -------------------------------------------------------------------------------------------------------------
 
 # Training
@@ -240,12 +171,13 @@ n_epochs = 501
 # need data x and labels y
 def train_step(batch_x, batch_y):
     with tf.GradientTape() as ae_tape:
+        # Generating style z and labels with the encoder
         encoder_z, _, encoder_softmax = encoder_ae(batch_x, training=True)
         decoder_input = tf.concat([encoder_z, encoder_softmax], axis=1)
-
+        # Creating Images with the style z and generated label information
         decoder_output = decoder(decoder_input, training=True)
 
-        # # Autoencoder Loss: half mse
+        # Autoencoder Loss:
         ae_loss = autoencoder_loss(batch_x, decoder_output, ae_loss_weight)
 
     ae_grads = ae_tape.gradient(ae_loss, encoder_ae.trainable_variables + decoder.trainable_variables)
@@ -317,23 +249,23 @@ def train_step(batch_x, batch_y):
         encoder_z, encoder_y, _ = encoder_ae(batch_x, training=True)
 
         '''
-        TODO: Loss Function mit Labels einfügen damit semisupervised richtig funktioniert
         In the semi - supervised classification phase, the autoencoder updates
         q(y|x) to minimize the cross-entropy cost on a labeled mini-batch
         '''
-
+        # creating a one hot vetcor with the original labels
         labels = tf.one_hot(batch_y, n_labels)
+        # comparing the real labels to the created ones
         l_loss = label_loss(labels, encoder_y, label_loss_weight)
-        # l_loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=encoder_y)
-        # l_loss = tf.reduce_mean(l_loss)
 
     label_grads = label_tape.gradient(l_loss, encoder_ae.trainable_variables)
     label_optimizer.apply_gradients(zip(label_grads, encoder_ae.trainable_variables))
 
+    # End of Training
     return ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss
 
-
 # -------------------------------------------------------------------------------------------------------------
+# Starting the training
+n_epochs = 501
 
 for epoch in range(n_epochs):
     start = time.time()
@@ -354,15 +286,18 @@ for epoch in range(n_epochs):
     for batch, (batch_x, batch_y) in enumerate(train_dataset):
         # -------------------------------------------------------------------------------------------------------------
         # Calculate cyclic learning rate
+        # From the Git repo: ...
         global_step = global_step + 1
         cycle = np.floor(1 + global_step / (2 * step_size))
         x_lr = np.abs(global_step / step_size - 2 * cycle + 1)
         clr = base_lr + (max_lr - base_lr) * max(0, 1 - x_lr)
+        # Setting the optimizers
         ae_optimizer.lr = clr
         dc_optimizer.lr = clr
         gen_optimizer.lr = clr
         label_optimizer.lr = clr
 
+        # Calling the Train Function
         ae_loss, dc_y_loss, dc_y_acc, dc_z_loss, dc_z_acc, gen_loss, l_loss = train_step(batch_x, batch_y)
 
         epoch_ae_loss_avg(ae_loss)
@@ -377,6 +312,7 @@ for epoch in range(n_epochs):
         epoch_label_loss_avg(l_loss)
 
     epoch_time = time.time() - start
+    # Terminal Output
     print('{:4d}: TIME: {:.2f} AE_LOSS: {:.4f} DC_Y_LOSS: {:.4f} DC_Y_ACC: {:.4f} DC_Z_LOSS: {:.4f} '
           'DC_Z_ACC: {:.4f} GEN_LOSS: {:.4f} CLASSIFICATION_LOSS: {:.4f}' \
           .format(epoch, epoch_time,
@@ -389,7 +325,7 @@ for epoch in range(n_epochs):
                   epoch_label_loss_avg.result()))
 
     # -------------------------------------------------------------------------------------------------------------
-
+    # Ploting the latent space every 100 epochs
     if epoch % 100 == 0:
         # Latent space of test set
         x_test_encoded, _, _ = encoder_ae(x_test, training=False)
@@ -411,18 +347,18 @@ for epoch in range(n_epochs):
         legend = ax.legend(*scatter.legend_elements(), loc="center left", title="Classes")
         ax.add_artist(legend)
 
-        # ax.set_xlim([-30, 30])
-        # ax.set_ylim([-30, 30])
-
-        plt.savefig(latent_space_dir / ('epoch_%d.png' % epoch))
+        plt.savefig(output_dir / ('epoch_%d.png' % epoch))
         plt.close('all')
 
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
         # ---------------------------------------------------------------------------------------------------------------------
-        # # VALIDATION
+        # VALIDATION
         # Latent space of validation set
+        # After the Training using the encoder to plot the latent space of the validation set to measure the performance
+        # on not seen datapoints
+
         if epoch == n_epochs - 1:
             # Same as  x_val_encoded, x_val_encoded_l = encoder_ae.predict(x_val)
             # Latent space of test set
@@ -445,5 +381,5 @@ for epoch in range(n_epochs):
             legend = ax.legend(*scatter.legend_elements(), loc="center left", title="Classes")
             ax.add_artist(legend)
 
-            plt.savefig(latent_space_dir / 'validation_latentspace.png')
+            plt.savefig(output_dir / 'validation_latentspace.png')
             plt.close('all')
