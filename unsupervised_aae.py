@@ -30,7 +30,7 @@ np.random.seed(random_seed)
 ROOT_PATH = Path.cwd()
 # Path for images and results
 # dir_name: var for the directory name where the images are going to be saved
-dir_name = 'test_nightly'
+dir_name = 'test_1hdim_DISTrain_false_acc'
 output_dir = (ROOT_PATH / ('experiment_results/unsupervisied_aae/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
@@ -49,34 +49,32 @@ multi_color = True
 print("1. Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 # Selecting the needed Classes and categorize them
-anomaly = [8]
+anomaly = [9]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [0, 8]
+include = [1, 9]
 
-# anomaly = [8]
-# # delete_y = [7]
-# # delete_x = [7]
-# drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-# include = [3, 8]
+
+#anomaly = [0, 1]
+#delete_y = [2, 3]
+#delete_x = [2, 3]
+#drop = []
+#include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # -------------------------------------------------------------------------------------------------------------
 # Creating the dataset
 # Training Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include,
-                                                         None, None)
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include)
 
 # -------------------------------------------------------------------------------------------------------------
 # Testdata
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include,
-                                                      None, None)
+x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include)
 
 # -------------------------------------------------------------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include,
-                                                   None, None)
+x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include)
 
 # -------------------------------------------------------------------------------------------------------------
 # Creating the aae model
@@ -194,7 +192,7 @@ def train_step(batch_x):
         # Creating the 'real_distribution' with a normal distribution
         real_distribution = tf.random.normal([batch_x.shape[0], z_dim], mean=0.0, stddev=1.0)
         # Generating style z
-        encoder_output = encoder(batch_x, training=True)
+        encoder_output = encoder(batch_x, training=False)
 
         # Give the discriminator the 2 distributions and compare the outputs
         dc_real = discriminator(real_distribution, training=True)
@@ -358,5 +356,5 @@ for epoch in range(n_epochs):
             plt.close('all')
 
 # Saving the trained decoder and encoder
-encoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/TrainedModels/Encoder_0_8/encoder_weights', True)
-decoder.save_weights('/home/fipsi/Documents/Code/Masterarbeit_GPU/TrainedModels/Decoder_0_8/decoder_weigts', True)
+#encoder.save_weights('/home/ptomac/Dokumente/Masterarbeit_AAE/TrainedModels/ExperimentModels/Encoder_67/encoder_weights', True)
+#decoder.save_weights('/home/ptomac/Dokumente/Masterarbeit_AAE/TrainedModels/ExperimentModels/Decoder_67/decoder_weights', True)

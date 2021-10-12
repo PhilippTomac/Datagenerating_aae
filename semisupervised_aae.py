@@ -27,39 +27,39 @@ np.random.seed(random_seed)
 ROOT_PATH = Path.cwd()
 # Path for images and results
 # dir_name: var for the directory name where the images are going to be saved
-dir_name = 'var_name'
-output_dir = (ROOT_PATH / ('experiment_results/semisupervised_aae_noise/%s' % dir_name))
+dir_name = 'test13_new'
+output_dir = (ROOT_PATH / ('experiment_results/semisupervised_aae/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
 
 # -------------------------------------------------------------------------------------------------------------
 # If more then 2 classes are in the dataset, set the var MULTI_COLOR to True
-MULTI_COLOR = False
+MULTI_COLOR = True
 
 # Loading Data MNIST
 print("Loading and Preprocessing Data with DataHandler.py")
 mnist = MNIST(random_state=random_seed)
 # Selecting the needed Classes and categorize them
-anomaly = [9]
-delete_y = [9]
-delete_x = [9]
-drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-include = [1, 9]
+anomaly = [0, 1]
+delete_y = [2, 3]
+delete_x = [2, 3]
+drop = []
+include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # ---------------------------------------------------------
 # Training Data
 print('Training Data...')
-x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include, delete_y, delete_x)
+x_train, y_train, y_train_original = mnist.get_datasplit('train', anomaly, drop, include, None, None, 1500)
 
 # ---------------------------------------------------------
 # Test data
 print('Test Data...')
-x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include, delete_y)
+x_test, y_test, y_test_original = mnist.get_datasplit('test', anomaly, drop, include, None, None)
 
 # ---------------------------------------------------------
 # Validation data
 print('Validation Data...')
-x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include, delete_y)
+x_val, y_val, y_val_original = mnist.get_datasplit('val', anomaly, drop, include, None, None)
 # -------------------------------------------------------------------------------------------------------------
 # Creating the needed models for the aae
 aae = models.AAE()
@@ -384,3 +384,6 @@ for epoch in range(n_epochs):
 
             plt.savefig(output_dir / 'validation_latentspace.png')
             plt.close('all')
+
+# encoder_ae.save_weights('/home/ptomac/Dokumente/Masterarbeit_AAE/TrainedModels/ExperimentModels/Encoder_9_semi/encoder_weights', True)
+# decoder.save_weights('/home/ptomac/Dokumente/Masterarbeit_AAE/TrainedModels/ExperimentModels/Decoder_9_semi/decoder_weights', True)
