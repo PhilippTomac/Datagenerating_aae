@@ -30,7 +30,7 @@ np.random.seed(random_seed)
 ROOT_PATH = Path.cwd()
 # Path for images and results
 # dir_name: var for the directory name where the images are going to be saved
-dir_name = 'test_1hdim_DISTrain_false_acc'
+dir_name = 'results_unsup_aae'
 output_dir = (ROOT_PATH / ('experiment_results/unsupervisied_aae/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
@@ -52,13 +52,6 @@ mnist = MNIST(random_state=random_seed)
 anomaly = [9]
 drop = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 include = [1, 9]
-
-
-#anomaly = [0, 1]
-#delete_y = [2, 3]
-#delete_x = [2, 3]
-#drop = []
-#include = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # -------------------------------------------------------------------------------------------------------------
 # Creating the dataset
@@ -129,7 +122,6 @@ plt.close('all')
 
 # -------------------------------------------------------------------------------------------------------------
 # Loss Function
-# Weights can be changed for more or less effect in the trainingprocess
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
@@ -155,7 +147,6 @@ def generator_loss(fake_output, loss_weight):
 
 # -------------------------------------------------------------------------------------------------------------
 # Circle Learning parameter
-# Later the lr can be changes and used without circle
 base_lr = 0.00025
 max_lr = 0.0025
 

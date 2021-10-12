@@ -27,7 +27,7 @@ np.random.seed(random_seed)
 ROOT_PATH = Path.cwd()
 # Path for images and results
 # dir_name: var for the directory name where the images are going to be saved
-dir_name = 'test13_new'
+dir_name = 'result_semisup_aae'
 output_dir = (ROOT_PATH / ('experiment_results/semisupervised_aae/%s' % dir_name))
 output_dir.mkdir(exist_ok=True)
 
@@ -116,7 +116,6 @@ plt.close('all')
 
 # -------------------------------------------------------------------------------------------------------------
 # Loss Function
-# Weights can be changed for more or less effect in the trainingprocess
 ae_loss_weight = 1.
 gen_loss_weight = 1.
 dc_loss_weight = 1.
@@ -147,7 +146,6 @@ def label_loss(label_input, label_reconstruction, label_loss_weight):
 
 # -------------------------------------------------------------------------------------------------------------
 # Circle Learning parameter
-# Later the lr can be changes and used without circle
 base_lr = 0.00025
 max_lr = 0.0025
 
@@ -286,7 +284,7 @@ for epoch in range(n_epochs):
     for batch, (batch_x, batch_y) in enumerate(train_dataset):
         # -------------------------------------------------------------------------------------------------------------
         # Calculate cyclic learning rate
-        # From the Git repo: ...
+        # From the Git repo: https://github.com/Mind-the-Pineapple/adversarial-autoencoder
         global_step = global_step + 1
         cycle = np.floor(1 + global_step / (2 * step_size))
         x_lr = np.abs(global_step / step_size - 2 * cycle + 1)
