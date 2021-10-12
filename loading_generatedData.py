@@ -3,7 +3,7 @@
 from typing import List
 import numpy as np
 
-# TODO: Add to DataHandler.py
+# TODO: Can be deleted... is included in the new DataHandler.py
 '''
 Function to generate a new mnist dataset with the the generated data from the aae
 :input
