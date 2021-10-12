@@ -54,7 +54,7 @@ images = []
 labels = []
 
 # Creating 1000 Datapoints
-for i in range(10000):
+for i in range(1000):
     # look up where the points are in the latent space
     # set mean and stddev to get the needed information to create the data you need
     z = tf.random.normal([1, 2], mean=(0, 2), stddev=0.5)
